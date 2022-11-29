@@ -6,7 +6,7 @@ private let kProtocolChildrenTypes: [SymbolKind] = [
     .instanceProperty, .classProperty, .staticProperty,
 ]
 private let testableRegex = try NSRegularExpression(
-    pattern: "^\\@testable import ([^ .]+)$", options: [.anchorsMatchLines])
+    pattern: "^\\import ([^ .]+)$", options: [.anchorsMatchLines])
 
 private func getTestableImports(path: String) -> Set<String> {
     guard let searchText = try? String(contentsOfFile: path) else {
@@ -185,8 +185,7 @@ func main(indexStorePath: String) {
                     occurrence.symbol.name.contains("I18N") ||
                     (occurrence.roles.contains(.definition) &&
                     referencedUSRs.contains(occurrence.symbol.usr) &&
-                    !isChildOfProtocol(occurrence: occurrence) &&
-                    !isPublic(file: dependentUnit.mainFile, occurrence: occurrence))
+                    !isChildOfProtocol(occurrence: occurrence))
                 {
                     requiredTestableImports.insert(moduleName)
                 }
@@ -194,7 +193,7 @@ func main(indexStorePath: String) {
         }
 
         for module in testableImports.intersection(seenModules).subtracting(requiredTestableImports) {
-            print("/usr/bin/sed -i \"\" 's/^@testable import \(module)$/import \(module)/g' \(unitReader.mainFile)")
+            print("/usr/bin/sed -i \"\" '/^import \(module)$/d' \(unitReader.mainFile)")
         }
     }
 }
