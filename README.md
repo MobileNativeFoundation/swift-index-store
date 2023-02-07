@@ -60,6 +60,13 @@ let package = Package(
 )
 ```
 
+Xcode:
+
+1. Add the swift-index-store as a Package Dependency to your project (via File ▸ Add Packages…).
+2. Added the “IndexStore” library to your target's Frameworks and Libraries.
+3. Add `$(TOOLCHAIN_DIR)/usr/lib` to your target's Runpath Search Paths (LD_RUNPATH_SEARCH_PATHS) build setting.
+4. Add `$(TOOLCHAIN_DIR)/usr/lib` to your target's Library Search Paths (LIBRARY_SEARCH_PATHS) build setting.
+
 ## How it works
 
 During compilation, both `swiftc` and `clang` can generate a detailed
