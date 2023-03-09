@@ -1,0 +1,3 @@
+build --incompatible_disallow_empty_glob
+build --macos_minimum_os=12.0
+build --host_macos_minimum_os=12.0

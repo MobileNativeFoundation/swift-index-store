@@ -3,3 +3,4 @@
 /*.xcodeproj/
 /DerivedData/
 /.swiftpm/
+bazel-*
