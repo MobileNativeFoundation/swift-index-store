@@ -1,0 +1,12 @@
+name: Bazel
+on:
+  pull_request:
+    types: [opened]
+  push:
+jobs:
+  TestMac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: swift-actions/setup-swift@v1
+      - run: bazelisk test //Tests/... --test_output=errors
