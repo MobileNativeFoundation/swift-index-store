@@ -5,11 +5,18 @@ func main(_ storePath: String, _ sourcePath: String) throws {
     let store = try IndexStore(path: storePath)
 
     var recordName: String?
+    var foundUnits = false
     for unitReader in store.units {
+        foundUnits = true
         if unitReader.mainFile == sourcePath {
             recordName = unitReader.recordName
             break
         }
+    }
+
+    if !foundUnits {
+        fputs("error: no records found, your index store might be invalid?\n", stderr)
+        exit(EXIT_FAILURE)
     }
 
     if recordName == nil {
