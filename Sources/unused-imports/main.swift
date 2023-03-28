@@ -117,7 +117,11 @@ struct Storage {
     let typealiases: Set<String>
 }
 
-func main(indexStorePath: String) {
+func main(
+    indexStorePath: String,
+    ignoredFileRegex: Regex<AnyRegexOutput>?,
+    ignoredModuleRegex: Regex<AnyRegexOutput>?)
+{
     if let directory = ProcessInfo.processInfo.environment["BUILD_WORKSPACE_DIRECTORY"] {
         FileManager.default.changeCurrentDirectoryPath(directory)
     }
@@ -150,6 +154,12 @@ func main(indexStorePath: String) {
     }
 
     for unitReader in units {
+        if (try? ignoredFileRegex?.wholeMatch(in: unitReader.mainFile)) != nil {
+            continue
+        } else if (try? ignoredModuleRegex?.wholeMatch(in: unitReader.moduleName)) != nil {
+            continue
+        }
+
         let allImports = getImports(path: unitReader.mainFile).intersection(allModuleNames)
         if allImports.isEmpty {
             continue
@@ -192,4 +202,19 @@ func main(indexStorePath: String) {
     }
 }
 
-main(indexStorePath: CommandLine.arguments[1])
+if CommandLine.arguments.count == 4 {
+    let ignoredFileRegex = try! Regex(CommandLine.arguments[2])
+    let ignoredModuleRegex = try! Regex(CommandLine.arguments[3])
+
+    main(
+        indexStorePath: CommandLine.arguments[1],
+        ignoredFileRegex: ignoredFileRegex,
+        ignoredModuleRegex: ignoredModuleRegex
+    )
+} else {
+    main(
+        indexStorePath: CommandLine.arguments[1],
+        ignoredFileRegex: nil,
+        ignoredModuleRegex: nil
+    )
+}
