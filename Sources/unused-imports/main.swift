@@ -154,9 +154,9 @@ func main(
     }
 
     for unitReader in units {
-        if (try? ignoredFileRegex?.wholeMatch(in: unitReader.mainFile)) != nil {
+        if let ignoredFileRegex, unitReader.mainFile.wholeMatch(of: ignoredFileRegex) != nil {
             continue
-        } else if (try? ignoredModuleRegex?.wholeMatch(in: unitReader.moduleName)) != nil {
+        } else if let ignoredModuleRegex, unitReader.moduleName.wholeMatch(of: ignoredModuleRegex) != nil {
             continue
         }
 
