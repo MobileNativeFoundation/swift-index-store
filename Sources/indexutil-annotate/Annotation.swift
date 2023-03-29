@@ -2,6 +2,7 @@ import IndexStore
 
 struct Annotation {
     let symbol: String
+    let usr: String
     let kind: String
     let subkind: String?
     /// Line number of symbol, zero based.
@@ -11,6 +12,7 @@ struct Annotation {
 
     init(_ symbolOccurrence: SymbolOccurrence) {
         self.symbol = symbolOccurrence.symbol.name
+        self.usr = symbolOccurrence.symbol.usr
         self.line = symbolOccurrence.location.line - 1
         self.column = symbolOccurrence.location.column - 1
         self.kind = symbolOccurrence.symbol.kind.description
@@ -25,6 +27,6 @@ extension Annotation: CustomStringConvertible {
         if let subkind = self.subkind {
             kind += ".\(subkind)"
         }
-        return "\(kind)=\(self.symbol)"
+        return "\(kind)=\(self.symbol)=\(self.usr)"
     }
 }
