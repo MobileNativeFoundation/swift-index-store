@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version:5.7
 
 import PackageDescription
 
@@ -25,6 +25,9 @@ let linkerSettings: [LinkerSetting]? = nil
 
 let package = Package(
     name: "IndexStore",
+    platforms: [
+        .macOS(.v13),
+    ],
     products: [
         .library(name: "IndexStore", targets: ["IndexStore"]),
         .library(name: "CSwiftDemangle", targets: ["CSwiftDemangle"]),
@@ -37,18 +40,18 @@ let package = Package(
     targets: [
         .target(name: "CIndexStore"),
         .target(name: "IndexStore", dependencies: ["CIndexStore"], linkerSettings: linkerSettings),
-        .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"]),
+        .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"], exclude: ["BUILD", "Data"]),
         .target(
             name: "CSwiftDemangle",
             cxxSettings: [.headerSearchPath("PrivateHeaders/include")],
             linkerSettings: [.linkedLibrary("swiftDemangle")]
         ),
         .target(name: "SwiftDemangle", dependencies: ["CSwiftDemangle"]),
-        .testTarget(name: "SwiftDemangleTests", dependencies: ["SwiftDemangle"]),
-        .target(name: "indexutil-export", dependencies: ["IndexStore"]),
-        .target(name: "unnecessary-testable", dependencies: ["IndexStore"]),
-        .target(name: "indexutil-annotate", dependencies: ["IndexStore"]),
-        .target(name: "tycat", dependencies: ["IndexStore"]),
+        .testTarget(name: "SwiftDemangleTests", dependencies: ["SwiftDemangle"], exclude: ["BUILD"]),
+        .executableTarget(name: "indexutil-export", dependencies: ["IndexStore"], exclude: ["BUILD"]),
+        .executableTarget(name: "unnecessary-testable", dependencies: ["IndexStore"], exclude: ["BUILD"]),
+        .executableTarget(name: "indexutil-annotate", dependencies: ["IndexStore"], exclude: ["BUILD"]),
+        .executableTarget(name: "tycat", dependencies: ["IndexStore"], exclude: ["BUILD"]),
     ],
     cxxLanguageStandard: .cxx11
 )
