@@ -36,8 +36,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "CIndexStore"),
-        .target(name: "IndexStore", dependencies: ["CIndexStore"]),
-        .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"], linkerSettings: linkerSettings),
+        .target(name: "IndexStore", dependencies: ["CIndexStore"], linkerSettings: linkerSettings),
+        .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"]),
         .target(
             name: "CSwiftDemangle",
             cxxSettings: [.headerSearchPath("PrivateHeaders/include")],
@@ -45,10 +45,10 @@ let package = Package(
         ),
         .target(name: "SwiftDemangle", dependencies: ["CSwiftDemangle"]),
         .testTarget(name: "SwiftDemangleTests", dependencies: ["SwiftDemangle"]),
-        .target(name: "indexutil-export", dependencies: ["IndexStore"], linkerSettings: linkerSettings),
-        .target(name: "unnecessary-testable", dependencies: ["IndexStore"], linkerSettings: linkerSettings),
-        .target(name: "indexutil-annotate", dependencies: ["IndexStore"], linkerSettings: linkerSettings),
-        .target(name: "tycat", dependencies: ["IndexStore"], linkerSettings: linkerSettings),
+        .target(name: "indexutil-export", dependencies: ["IndexStore"]),
+        .target(name: "unnecessary-testable", dependencies: ["IndexStore"]),
+        .target(name: "indexutil-annotate", dependencies: ["IndexStore"]),
+        .target(name: "tycat", dependencies: ["IndexStore"]),
     ],
     cxxLanguageStandard: .cxx11
 )
