@@ -6,7 +6,7 @@ import Foundation
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
 private let importRegex = try Regex(#"\bimport\b"#)
-private let noqaRegex = try Regex(#"// *noqa"#)
+private let ignoreRegex = try Regex(#"// *ignore-import"#)
 
 private func getImports(path: String, recordReader: RecordReader?) -> (Set<String>, [String: Int]) {
     guard let recordReader else {
@@ -21,7 +21,7 @@ private func getImports(path: String, recordReader: RecordReader?) -> (Set<Strin
         if occurrence.symbol.kind == .module && occurrence.roles.contains(.reference) {
             let line = lines[occurrence.location.line - 1]
             // FIXME: This won't work if we are also adding missing imports, return it separately
-            if line.firstMatch(of: importRegex) != nil && line.firstMatch(of: noqaRegex) == nil {
+            if line.firstMatch(of: importRegex) != nil && line.firstMatch(of: ignoreRegex) == nil {
                 imports.insert(occurrence.symbol.name)
                 importsToLineNumbers[occurrence.symbol.name] = occurrence.location.line
             }
@@ -59,7 +59,7 @@ private func getReferenceUSRs(unitReader: UnitReader, recordReader: RecordReader
             if identifier != occurrence.symbol.name {
                 typealiasExts.insert(identifier)
             }
-        } else if occurrence.roles.contains(.reference){
+        } else if occurrence.roles.contains(.reference) {
             usrs.insert(occurrence.symbol.usr)
         }
     }
@@ -115,6 +115,7 @@ func main(
         FileManager.default.changeCurrentDirectoryPath(directory)
     }
 
+    let pwd = FileManager.default.currentDirectoryPath
     var filesToUSRDefinitions: [String: Storage] = [:]
     let (units, unitToRecord) = collectUnitsAndRecords(indexStorePath: indexStorePath)
     var modulesToUnits: [String: [UnitReader]] = [:]
@@ -188,7 +189,8 @@ func main(
         let unusedImports = allImports.subtracting(usedImports)
         if !unusedImports.isEmpty {
             let sedCmd = unusedImports.map { "\(importsToLineNumbers[$0]!)d" }.sorted().joined(separator: ";")
-            print("/usr/bin/sed -i \"\" '\(sedCmd)' \(unitReader.mainFile)")
+            let relativePath = unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: "")
+            print("/usr/bin/sed -i \"\" '\(sedCmd)' \(relativePath)")
         }
     }
 }
