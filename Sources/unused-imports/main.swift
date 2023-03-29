@@ -9,30 +9,30 @@ private let testableRegex = try NSRegularExpression(
 // FIXME: This isn't complete
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
+private let importRegex = try Regex(#"\bimport\b"#)
+private let noqaRegex = try Regex(#"// *noqa"#)
 
-private func getImports(path: String) -> Set<String> {
-    guard let searchText = try? String(contentsOfFile: path) else {
-        fatalError("failed to read '\(path)'")
+private func getImports(path: String, recordReader: RecordReader?) -> (Set<String>, [String: Int]) {
+    guard let recordReader else {
+        return ([], [:])
     }
 
-    let matches = testableRegex.matches(
-        in: searchText, range: NSRange(searchText.startIndex..<searchText.endIndex, in: searchText))
+    var importsToLineNumbers = [String: Int]()
+    let lines = try! String(contentsOfFile: path).split(separator: "\n", omittingEmptySubsequences: false)
 
-    return Set(matches.compactMap { match in
-        guard let range = Range(match.range(at: 1), in: searchText) else {
-            fatalError("error: failed to get regex match: \(path)")
-        }
-
-        if let range = Range(match.range(at: 2), in: searchText) {
-            let comment = String(searchText[range])
-            if comment.contains("noqa") {
-                // FIXME: This won't work if we are also adding missing imports, return it separately
-                return nil
+    var imports = Set<String>()
+    recordReader.forEach { (occurrence: SymbolOccurrence) in
+        if occurrence.symbol.kind == .module && occurrence.roles.contains(.reference) {
+            let line = lines[occurrence.location.line - 1]
+            // FIXME: This won't work if we are also adding missing imports, return it separately
+            if line.firstMatch(of: importRegex) != nil && line.firstMatch(of: noqaRegex) == nil {
+                imports.insert(occurrence.symbol.name)
+                importsToLineNumbers[occurrence.symbol.name] = occurrence.location.line
             }
         }
+    }
 
-        return String(searchText[range])
-    })
+    return (imports, importsToLineNumbers)
 }
 
 private func getReferenceUSRs(unitReader: UnitReader, recordReader: RecordReader?) -> Storage {
@@ -160,7 +160,8 @@ func main(
             continue
         }
 
-        let allImports = getImports(path: unitReader.mainFile).intersection(allModuleNames)
+        let (rawImports, importsToLineNumbers) = getImports(path: unitReader.mainFile, recordReader: unitToRecord[unitReader.mainFile])
+        let allImports = rawImports.intersection(allModuleNames)
         if allImports.isEmpty {
             continue
         }
@@ -177,7 +178,6 @@ func main(
                 guard let storage = filesToUSRDefinitions[dependentUnit.mainFile] else {
                     continue
                 }
-
 
                 if !storage.usrs.intersection(referencedUSRs.usrs).isEmpty {
                     usedImports.insert(dependentUnit.moduleName)
@@ -196,8 +196,10 @@ func main(
             }
         }
 
-        for module in allImports.intersection(allModuleNames).subtracting(usedImports) {
-            print("/usr/bin/sed -i \"\" '/^import \(module)$/d' \(unitReader.mainFile)")
+        let unusedImports = allImports.intersection(allModuleNames).subtracting(usedImports)
+        if !unusedImports.isEmpty {
+            let sedCmd = unusedImports.map { "\(importsToLineNumbers[$0]!)d" }.sorted().joined(separator: ";")
+            print("/usr/bin/sed -i \"\" '\(sedCmd)' \(unitReader.mainFile)")
         }
     }
 }
