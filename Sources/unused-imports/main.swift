@@ -2,10 +2,6 @@ import IndexStore
 import Darwin
 import Foundation
 
-// FIXME: Loosen this regex
-// FIXME: this ignores 'import foo.bar' and all other 'import struct foo.bar' things
-private let testableRegex = try NSRegularExpression(
-    pattern: #"^[^/\n]*\bimport ([^ \n.]+)( *// *noqa)?$"#, options: [.anchorsMatchLines])
 // FIXME: This isn't complete
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
@@ -89,19 +85,12 @@ private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [S
 
         units.append(unitReader)
         if let recordName = unitReader.recordName {
-            let recordReader: RecordReader
             do {
-                recordReader = try RecordReader(indexStore: store, recordName: recordName)
+                let recordReader = try RecordReader(indexStore: store, recordName: recordName)
+                unitToRecord[unitReader.mainFile] = recordReader
             } catch {
                 fatalError("error: failed to load record: \(recordName) \(error)")
             }
-
-            // FIXME: Duplicates can happen if a single file is included in multiple targets / configurations
-            // if let existingRecord = unitToRecord[unitReader.mainFile] {
-            //     // fatalError("error: found duplicate record for \(unitReader.mainFile) in \(existingRecord.name) and \(recordReader.name)")
-            // }
-
-            unitToRecord[unitReader.mainFile] = recordReader
         }
     }
 
@@ -160,13 +149,15 @@ func main(
             continue
         }
 
-        let (rawImports, importsToLineNumbers) = getImports(path: unitReader.mainFile, recordReader: unitToRecord[unitReader.mainFile])
+        let (rawImports, importsToLineNumbers) = getImports(
+            path: unitReader.mainFile, recordReader: unitToRecord[unitReader.mainFile])
         let allImports = rawImports.intersection(allModuleNames)
         if allImports.isEmpty {
             continue
         }
 
-        let referencedUSRs = getReferenceUSRs(unitReader: unitReader, recordReader: unitToRecord[unitReader.mainFile])
+        let referencedUSRs = getReferenceUSRs(
+            unitReader: unitReader, recordReader: unitToRecord[unitReader.mainFile])
         var usedImports = Set<String>()
         for anImport in allImports {
             for dependentUnit in modulesToUnits[anImport] ?? [] {
@@ -181,10 +172,8 @@ func main(
 
                 if !storage.usrs.intersection(referencedUSRs.usrs).isEmpty {
                     usedImports.insert(dependentUnit.moduleName)
-                }
-
-                if !storage.typealiases.intersection(referencedUSRs.typealiases).isEmpty {
-                    // If the type alias isn't already imported then it's probably not the one we're looking for
+                } else if !storage.typealiases.intersection(referencedUSRs.typealiases).isEmpty {
+                    // If the typealias isn't already imported then it's probably not the one we're looking for
                     if allImports.contains(dependentUnit.moduleName) {
                         usedImports.insert(dependentUnit.moduleName)
                     }
@@ -196,7 +185,7 @@ func main(
             }
         }
 
-        let unusedImports = allImports.intersection(allModuleNames).subtracting(usedImports)
+        let unusedImports = allImports.subtracting(usedImports)
         if !unusedImports.isEmpty {
             let sedCmd = unusedImports.map { "\(importsToLineNumbers[$0]!)d" }.sorted().joined(separator: ";")
             print("/usr/bin/sed -i \"\" '\(sedCmd)' \(unitReader.mainFile)")
@@ -205,8 +194,8 @@ func main(
 }
 
 if CommandLine.arguments.count == 4 {
-    let ignoredFileRegex = try! Regex(CommandLine.arguments[2])
-    let ignoredModuleRegex = try! Regex(CommandLine.arguments[3])
+    let ignoredFileRegex = try Regex(CommandLine.arguments[2])
+    let ignoredModuleRegex = try Regex(CommandLine.arguments[3])
 
     main(
         indexStorePath: CommandLine.arguments[1],
