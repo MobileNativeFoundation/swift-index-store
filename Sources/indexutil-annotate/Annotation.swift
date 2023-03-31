@@ -9,6 +9,7 @@ struct Annotation {
     let line: Int
     /// Column number of symbol, zero based.
     let column: Int
+    let roles: SymbolRoles
 
     init(_ symbolOccurrence: SymbolOccurrence) {
         self.symbol = symbolOccurrence.symbol.name
@@ -18,6 +19,7 @@ struct Annotation {
         self.kind = symbolOccurrence.symbol.kind.description
         let subkind = symbolOccurrence.symbol.subkind
         self.subkind = subkind != .none ? subkind.description : nil
+        self.roles = symbolOccurrence.roles
     }
 }
 
@@ -27,6 +29,6 @@ extension Annotation: CustomStringConvertible {
         if let subkind = self.subkind {
             kind += ".\(subkind)"
         }
-        return "\(kind)=\(self.symbol)=\(self.usr)"
+        return "\(kind)=\(self.symbol)=\(self.usr)=\(self.roles)"
     }
 }
