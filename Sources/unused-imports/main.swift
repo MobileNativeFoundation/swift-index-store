@@ -188,7 +188,7 @@ func main(
 
         let unusedImports = allImports.subtracting(usedImports)
         if !unusedImports.isEmpty {
-            let sedCmd = unusedImports.map { "\(importsToLineNumbers[$0]!)d" }.sorted().joined(separator: ";")
+            let sedCmd = unusedImports.map { importsToLineNumbers[$0]! }.sorted().map { "\($0)d" }.joined(separator: ";")
             let relativePath = unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: "")
             print("/usr/bin/sed -i \"\" '\(sedCmd)' \(relativePath)")
         }
