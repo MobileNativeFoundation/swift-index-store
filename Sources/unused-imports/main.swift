@@ -83,6 +83,12 @@ private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [S
             continue
         }
 
+        // If files are built in multiple configurations, we just pick the first one.
+        // Otherwise it's unclear which module(s) things are actually a part of.
+        if unitToRecord[unitReader.mainFile] != nil {
+            continue
+        }
+
         units.append(unitReader)
         if let recordName = unitReader.recordName {
             do {
