@@ -5,6 +5,9 @@ swift_binary(
     srcs = [
         "main.swift",
     ],
+    tags = [
+        "manual",
+    ],
     deps = [
         "//:IndexStore",
     ],
