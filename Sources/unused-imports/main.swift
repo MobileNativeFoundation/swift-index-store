@@ -2,11 +2,11 @@ import IndexStore
 import Darwin
 import Foundation
 
+private typealias References = (usrs: Set<String>, typealiases: Set<String>)
 // FIXME: This isn't complete
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
 private let ignoreRegex = try Regex(#"// *ignore-import$"#)
-
 private var cachedLines = [String: [String.SubSequence]]()
 
 private func getImports(path: String, recordReader: RecordReader?) -> (Set<String>, [String: Int]) {
@@ -35,10 +35,10 @@ private func getImports(path: String, recordReader: RecordReader?) -> (Set<Strin
     return (imports, importsToLineNumbers)
 }
 
-private func getReferenceUSRs(unitReader: UnitReader, recordReader: RecordReader?) -> Storage {
+private func getReferences(unitReader: UnitReader, recordReader: RecordReader?) -> References {
     // Empty source files have units but no records
     guard let recordReader else {
-        return Storage(usrs: [], typealiases: [])
+        return References(usrs: [], typealiases: [])
     }
 
     var usrs = Set<String>()
@@ -64,7 +64,7 @@ private func getReferenceUSRs(unitReader: UnitReader, recordReader: RecordReader
         }
     }
 
-    return Storage(usrs: usrs, typealiases: typealiasExts)
+    return References(usrs: usrs, typealiases: typealiasExts)
 }
 
 private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [String: RecordReader]) {
@@ -101,8 +101,6 @@ private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [S
     return (units, unitToRecord)
 }
 
-typealias Storage = (usrs: Set<String>, typealiases: Set<String>)
-
 func main(
     indexStorePath: String,
     ignoredFileRegex: Regex<AnyRegexOutput>?,
@@ -113,10 +111,12 @@ func main(
     }
 
     let pwd = FileManager.default.currentDirectoryPath
-    var filesToUSRDefinitions: [String: Storage] = [:]
+    var filesToDefinitions: [String: References] = [:]
     let (units, unitToRecord) = collectUnitsAndRecords(indexStorePath: indexStorePath)
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
+    var allDefinitionUsrs = Set<String>()
+
     for unitReader in units {
         allModuleNames.insert(unitReader.moduleName)
         modulesToUnits[unitReader.moduleName, default: []].append(unitReader)
@@ -128,6 +128,8 @@ func main(
             recordReader.forEach { (occurrence: SymbolOccurrence) in
                 if occurrence.roles.contains(.definition) {
                     definedUsrs.insert(occurrence.symbol.usr)
+                    allDefinitionUsrs.insert(occurrence.symbol.usr)
+
                     if occurrence.symbol.kind == .typealias {
                         definedTypealiases.insert(occurrence.symbol.name)
                     }
@@ -135,7 +137,7 @@ func main(
 
             }
 
-            filesToUSRDefinitions[unitReader.mainFile] = Storage(
+            filesToDefinitions[unitReader.mainFile] = References(
                 usrs: definedUsrs, typealiases: definedTypealiases)
         }
     }
@@ -154,7 +156,7 @@ func main(
             continue
         }
 
-        let referencedUSRs = getReferenceUSRs(
+        let references = getReferences(
             unitReader: unitReader, recordReader: unitToRecord[unitReader.mainFile])
         var usedImports = Set<String>()
         for anImport in allImports {
@@ -164,13 +166,13 @@ func main(
                 }
 
                 // Empty files have units but no records and therefore no usrs
-                guard let storage = filesToUSRDefinitions[dependentUnit.mainFile] else {
+                guard let definitions = filesToDefinitions[dependentUnit.mainFile] else {
                     continue
                 }
 
-                if !storage.usrs.intersection(referencedUSRs.usrs).isEmpty {
+                if !definitions.usrs.intersection(references.usrs).isEmpty {
                     usedImports.insert(dependentUnit.moduleName)
-                } else if !storage.typealiases.intersection(referencedUSRs.typealiases).isEmpty {
+                } else if !definitions.typealiases.intersection(references.typealiases).isEmpty {
                     // If the typealias isn't already imported then it's probably not the one we're looking for
                     if allImports.contains(dependentUnit.moduleName) {
                         usedImports.insert(dependentUnit.moduleName)
