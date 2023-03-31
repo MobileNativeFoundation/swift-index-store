@@ -9,11 +9,7 @@ private let identifierRegex = try NSRegularExpression(
 private let ignoreRegex = try Regex(#"// *ignore-import$"#)
 private var cachedLines = [String: [String.SubSequence]]()
 
-private func getImports(path: String, recordReader: RecordReader?) -> (Set<String>, [String: Int]) {
-    guard let recordReader else {
-        return ([], [:])
-    }
-
+private func getImports(path: String, recordReader: RecordReader) -> (Set<String>, [String: Int]) {
     var importsToLineNumbers = [String: Int]()
     let lines = try! String(contentsOfFile: path).split(separator: "\n", omittingEmptySubsequences: false)
     cachedLines[path] = lines
@@ -35,12 +31,7 @@ private func getImports(path: String, recordReader: RecordReader?) -> (Set<Strin
     return (imports, importsToLineNumbers)
 }
 
-private func getReferences(unitReader: UnitReader, recordReader: RecordReader?) -> References {
-    // Empty source files have units but no records
-    guard let recordReader else {
-        return References(usrs: [], typealiases: [])
-    }
-
+private func getReferences(unitReader: UnitReader, recordReader: RecordReader) -> References {
     var usrs = Set<String>()
     var typealiasExts = Set<String>()
     recordReader.forEach { (occurrence: SymbolOccurrence) in
@@ -67,7 +58,7 @@ private func getReferences(unitReader: UnitReader, recordReader: RecordReader?) 
     return References(usrs: usrs, typealiases: typealiasExts)
 }
 
-private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [String: RecordReader]) {
+private func collectUnitsAndRecords(indexStorePath: String) -> [(UnitReader, RecordReader)] {
     let store: IndexStore
     do {
         store = try IndexStore(path: indexStorePath)
@@ -75,36 +66,33 @@ private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [S
         fatalError("error: failed to open index store: \(error)")
     }
 
-    var units: [UnitReader] = []
-    var unitToRecord: [String: RecordReader] = [:]
-
+    var unitsAndRecords: [(UnitReader, RecordReader)] = []
+    var seenUnits = Set<String>()
     for unitReader in store.units {
         if unitReader.mainFile.isEmpty {
             continue
         }
 
-        // If files are built in multiple configurations, we just pick the first one.
-        // Otherwise it's unclear which module(s) things are actually a part of.
-        if unitToRecord[unitReader.mainFile] != nil {
+        if seenUnits.contains(unitReader.mainFile) {
             continue
         }
 
-        units.append(unitReader)
         if let recordName = unitReader.recordName {
             do {
                 let recordReader = try RecordReader(indexStore: store, recordName: recordName)
-                unitToRecord[unitReader.mainFile] = recordReader
+                unitsAndRecords.append((unitReader, recordReader))
+                seenUnits.insert(unitReader.mainFile)
             } catch {
                 fatalError("error: failed to load record: \(recordName) \(error)")
             }
         }
     }
 
-    if units.isEmpty {
+    if unitsAndRecords.isEmpty {
         fatalError("error: failed to load units from \(indexStorePath)")
     }
 
-    return (units, unitToRecord)
+    return unitsAndRecords
 }
 
 func main(
@@ -118,35 +106,33 @@ func main(
 
     let pwd = FileManager.default.currentDirectoryPath
     var filesToDefinitions: [String: References] = [:]
-    let (units, unitToRecord) = collectUnitsAndRecords(indexStorePath: indexStorePath)
+    let unitsAndRecords = collectUnitsAndRecords(indexStorePath: indexStorePath)
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
 
-    for unitReader in units {
+    for (unitReader, recordReader) in unitsAndRecords {
         allModuleNames.insert(unitReader.moduleName)
         modulesToUnits[unitReader.moduleName, default: []].append(unitReader)
 
-        if let recordReader = unitToRecord[unitReader.mainFile] {
-            var definedUsrs = Set<String>()
-            var definedTypealiases = Set<String>()
+        var definedUsrs = Set<String>()
+        var definedTypealiases = Set<String>()
 
-            recordReader.forEach { (occurrence: SymbolOccurrence) in
-                if occurrence.roles.contains(.definition) {
-                    definedUsrs.insert(occurrence.symbol.usr)
+        recordReader.forEach { (occurrence: SymbolOccurrence) in
+            if occurrence.roles.contains(.definition) {
+                definedUsrs.insert(occurrence.symbol.usr)
 
-                    if occurrence.symbol.kind == .typealias {
-                        definedTypealiases.insert(occurrence.symbol.name)
-                    }
+                if occurrence.symbol.kind == .typealias {
+                    definedTypealiases.insert(occurrence.symbol.name)
                 }
-
             }
 
-            filesToDefinitions[unitReader.mainFile] = References(
-                usrs: definedUsrs, typealiases: definedTypealiases)
         }
+
+        filesToDefinitions[unitReader.mainFile] = References(
+            usrs: definedUsrs, typealiases: definedTypealiases)
     }
 
-    for unitReader in units {
+    for (unitReader, recordReader) in unitsAndRecords {
         if let ignoredFileRegex, unitReader.mainFile.wholeMatch(of: ignoredFileRegex) != nil {
             continue
         } else if let ignoredModuleRegex, unitReader.moduleName.wholeMatch(of: ignoredModuleRegex) != nil {
@@ -154,14 +140,13 @@ func main(
         }
 
         let (rawImports, importsToLineNumbers) = getImports(
-            path: unitReader.mainFile, recordReader: unitToRecord[unitReader.mainFile])
+            path: unitReader.mainFile, recordReader: recordReader)
         let allImports = rawImports.intersection(allModuleNames)
         if allImports.isEmpty {
             continue
         }
 
-        let references = getReferences(
-            unitReader: unitReader, recordReader: unitToRecord[unitReader.mainFile])
+        let references = getReferences(unitReader: unitReader, recordReader: recordReader)
         var usedImports = Set<String>()
         for anImport in allImports {
             for dependentUnit in modulesToUnits[anImport] ?? [] {
