@@ -5,8 +5,9 @@ import Foundation
 // FIXME: This isn't complete
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
-private let importRegex = try Regex(#"\bimport "#)
 private let ignoreRegex = try Regex(#"// *ignore-import$"#)
+
+private var cachedLines = [String: [String.SubSequence]]()
 
 private func getImports(path: String, recordReader: RecordReader?) -> (Set<String>, [String: Int]) {
     guard let recordReader else {
@@ -15,13 +16,14 @@ private func getImports(path: String, recordReader: RecordReader?) -> (Set<Strin
 
     var importsToLineNumbers = [String: Int]()
     let lines = try! String(contentsOfFile: path).split(separator: "\n", omittingEmptySubsequences: false)
+    cachedLines[path] = lines
 
     var imports = Set<String>()
     recordReader.forEach { (occurrence: SymbolOccurrence) in
         if occurrence.symbol.kind == .module && occurrence.roles.contains(.reference) {
             let line = lines[occurrence.location.line - 1]
             // FIXME: This won't work if we are also adding missing imports, return it separately
-            if (line.hasPrefix("import ") || line.firstMatch(of: importRegex) != nil) &&
+            if (line.hasPrefix("import ") || line.contains(" import ")) &&
                 line.firstMatch(of: ignoreRegex) == nil
             {
                 imports.insert(occurrence.symbol.name)
@@ -39,17 +41,13 @@ private func getReferenceUSRs(unitReader: UnitReader, recordReader: RecordReader
         return Storage(usrs: [], typealiases: [])
     }
 
-    var lines: [String.SubSequence]?
     var usrs = Set<String>()
     var typealiasExts = Set<String>()
     recordReader.forEach { (occurrence: SymbolOccurrence) in
         if occurrence.symbol.subkind == .swiftExtensionOfStruct  {
             usrs.insert(occurrence.symbol.usr)
-            if lines == nil {
-                lines = try! String(contentsOfFile: unitReader.mainFile).split(separator: "\n", omittingEmptySubsequences: false)
-            }
-
-            let line = String(lines![occurrence.location.line - 1])
+            let lines = cachedLines[unitReader.mainFile]!
+            let line = String(lines[occurrence.location.line - 1])
             let indexes = line.index(line.startIndex, offsetBy: occurrence.location.column - 1)..<line.endIndex
             let range = NSRange(indexes, in: line)
             // FIXME: extension [Int] doesn't match
@@ -103,10 +101,7 @@ private func collectUnitsAndRecords(indexStorePath: String) -> ([UnitReader], [S
     return (units, unitToRecord)
 }
 
-struct Storage {
-    let usrs: Set<String>
-    let typealiases: Set<String>
-}
+typealias Storage = (usrs: Set<String>, typealiases: Set<String>)
 
 func main(
     indexStorePath: String,
