@@ -121,7 +121,6 @@ func main(
     let (units, unitToRecord) = collectUnitsAndRecords(indexStorePath: indexStorePath)
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
-    var allDefinitionUsrs = Set<String>()
 
     for unitReader in units {
         allModuleNames.insert(unitReader.moduleName)
@@ -134,7 +133,6 @@ func main(
             recordReader.forEach { (occurrence: SymbolOccurrence) in
                 if occurrence.roles.contains(.definition) {
                     definedUsrs.insert(occurrence.symbol.usr)
-                    allDefinitionUsrs.insert(occurrence.symbol.usr)
 
                     if occurrence.symbol.kind == .typealias {
                         definedTypealiases.insert(occurrence.symbol.name)
