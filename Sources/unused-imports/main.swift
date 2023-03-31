@@ -5,8 +5,8 @@ import Foundation
 // FIXME: This isn't complete
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
-private let importRegex = try Regex(#"\bimport\b"#)
-private let ignoreRegex = try Regex(#"// *ignore-import"#)
+private let importRegex = try Regex(#"\bimport "#)
+private let ignoreRegex = try Regex(#"// *ignore-import$"#)
 
 private func getImports(path: String, recordReader: RecordReader?) -> (Set<String>, [String: Int]) {
     guard let recordReader else {
@@ -21,7 +21,9 @@ private func getImports(path: String, recordReader: RecordReader?) -> (Set<Strin
         if occurrence.symbol.kind == .module && occurrence.roles.contains(.reference) {
             let line = lines[occurrence.location.line - 1]
             // FIXME: This won't work if we are also adding missing imports, return it separately
-            if line.firstMatch(of: importRegex) != nil && line.firstMatch(of: ignoreRegex) == nil {
+            if (line.hasPrefix("import ") || line.firstMatch(of: importRegex) != nil) &&
+                line.firstMatch(of: ignoreRegex) == nil
+            {
                 imports.insert(occurrence.symbol.name)
                 importsToLineNumbers[occurrence.symbol.name] = occurrence.location.line
             }
