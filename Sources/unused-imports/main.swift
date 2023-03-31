@@ -3,7 +3,6 @@ import Darwin
 import Foundation
 
 private typealias References = (usrs: Set<String>, typealiases: Set<String>)
-// FIXME: This isn't complete
 private let identifierRegex = try NSRegularExpression(
     pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
 private let ignoreRegex = try Regex(#"// *ignore-import$"#)
@@ -43,9 +42,9 @@ private func getReferences(unitReader: UnitReader, recordReader: RecordReader) -
             let range = NSRange(indexes, in: line)
             // FIXME: extension [Int] doesn't match
             guard let identifierRange = identifierRegex.firstMatch(in: line, range: range)?.range(at: 1) else {
-                // print("no identifier line is: \(line[indexes]) in \(unitReader.mainFile)")
                 return
             }
+
             let identifier = String(line[Range(identifierRange, in: line)!])
             if identifier != occurrence.symbol.name {
                 typealiasExts.insert(identifier)
