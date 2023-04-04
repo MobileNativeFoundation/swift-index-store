@@ -25,7 +25,7 @@
 #include <cstdint>
 #define LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING 1
 #include "llvm/ADT/StringRef.h"
-#include "swift/Runtime/Config.h"
+// #include "swift/Runtime/Config.h"
 
 namespace llvm {
   class raw_ostream;
@@ -635,7 +635,6 @@ llvm::StringRef makeSymbolicMangledNameStringRef(const char *base);
 //// define what these will be.
 /// \returns the demangled name. Returns nullptr if the input String is not a
 /// Swift mangled name.
-SWIFT_RUNTIME_EXPORT
 char *swift_demangle(const char *mangledName,
                      size_t mangledNameLength,
                      char *outputBuffer,

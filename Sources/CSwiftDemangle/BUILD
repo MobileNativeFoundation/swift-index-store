@@ -8,6 +8,7 @@ cc_library(
     hdrs = glob([
         "include/**/*.h",
     ]),
+    copts = ["-std=c++17"],
     includes = [
         "PrivateHeaders/include",
         "include",

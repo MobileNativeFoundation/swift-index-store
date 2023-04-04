@@ -3,6 +3,7 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 cc_library(
     name = "CIndexStore",
     hdrs = ["Sources/CIndexStore/include/indexstore.h"],
+    copts = ["-std=c++17"],
     linkstatic = True,
     tags = ["swift_module=CIndexStore"],
 )
