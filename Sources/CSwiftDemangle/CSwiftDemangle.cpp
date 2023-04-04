@@ -27,7 +27,9 @@ demangle_node_t demangle_symbolAsNode(demangle_context_t ctx, const char *symbol
   // USRs in the index have a prefix of s: instead of $S. Copy the string and change the first two letters.
   if (strncmp("s:", symbol, 2) == 0) {
     char true_symbol[strlen(symbol) + 1];
-    strcpy(true_symbol, symbol);
+    // Get the index before the last colon because we replace the first 2 characters below.
+    const char *str_before_colon = strrchr(symbol, ':') - 1;
+    strcpy(true_symbol, str_before_colon);
     strncpy(true_symbol, "$S", 2);
     return ctx->demangleSymbolAsNode(true_symbol);
   }
