@@ -17,10 +17,12 @@ let linkerSettings: [LinkerSetting]? = {
     return [
         .unsafeFlags(["-L\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
         .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
+        // This is a hack to get Xcode's version instead of the system installed version
+        .unsafeFlags(["-Xlinker", "-force_load", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/libswiftDemangle.dylib"]),
     ]
 }()
 #else
-let linkerSettings: [LinkerSetting]? = nil
+let linkerSettings: [LinkerSetting] = [.linkedLibrary("swiftDemangle")]
 #endif
 
 let package = Package(
@@ -43,8 +45,7 @@ let package = Package(
         .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"], exclude: ["BUILD", "Data"]),
         .target(
             name: "CSwiftDemangle",
-            cxxSettings: [.headerSearchPath("PrivateHeaders/include")],
-            linkerSettings: [.linkedLibrary("swiftDemangle")]
+            cxxSettings: [.headerSearchPath("PrivateHeaders/include")]
         ),
         .target(name: "SwiftDemangle", dependencies: ["CSwiftDemangle"]),
         .testTarget(name: "SwiftDemangleTests", dependencies: ["SwiftDemangle"], exclude: ["BUILD"]),
