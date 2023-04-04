@@ -53,5 +53,5 @@ let package = Package(
         .executableTarget(name: "indexutil-annotate", dependencies: ["IndexStore"], exclude: ["BUILD"]),
         .executableTarget(name: "tycat", dependencies: ["IndexStore"], exclude: ["BUILD"]),
     ],
-    cxxLanguageStandard: .cxx11
+    cxxLanguageStandard: .cxx17
 )
