@@ -1,13 +1,20 @@
-name: Bazel
+name: ci
 on:
   pull_request:
     types: [opened]
   push:
+    branches:
+      - main
 jobs:
-  TestMac:
+  test-bazel:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
       - uses: swift-actions/setup-swift@v1
       - run: bazelisk build //...
+  test-swiftpm:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: swift-actions/setup-swift@v1
       - run: swift build
