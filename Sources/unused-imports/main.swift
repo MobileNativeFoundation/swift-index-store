@@ -3,8 +3,7 @@ import Darwin
 import Foundation
 
 private typealias References = (usrs: Set<String>, typealiases: Set<String>)
-private let identifierRegex = try NSRegularExpression(
-    pattern: "([a-zA-Z_][a-zA-Z0-9_]*)", options: [])
+private let identifierRegex = try Regex("([a-zA-Z_][a-zA-Z0-9_]*)")
 private let ignoreRegex = try Regex(#"// *ignore-import$"#)
 private var cachedLines = [String: [String.SubSequence]]()
 
@@ -37,15 +36,14 @@ private func getReferences(unitReader: UnitReader, recordReader: RecordReader) -
         if occurrence.symbol.subkind == .swiftExtensionOfStruct  {
             usrs.insert(occurrence.symbol.usr)
             let lines = cachedLines[unitReader.mainFile]!
-            let line = String(lines[occurrence.location.line - 1])
-            let indexes = line.index(line.startIndex, offsetBy: occurrence.location.column - 1)..<line.endIndex
-            let range = NSRange(indexes, in: line)
+            let line = lines[occurrence.location.line - 1]
+            let startIndex = line.index(line.startIndex, offsetBy: occurrence.location.column - 1)
             // FIXME: `extension [Int]` doesn't match
-            guard let identifierRange = identifierRegex.firstMatch(in: line, range: range)?.range(at: 1) else {
+            guard let match = line[startIndex...].firstMatch(of: identifierRegex) else {
                 return
             }
 
-            let identifier = String(line[Range(identifierRange, in: line)!])
+            let identifier = String(match.0)
             if identifier != occurrence.symbol.name {
                 typealiasExts.insert(identifier)
             }
