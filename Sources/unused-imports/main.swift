@@ -4,7 +4,7 @@ import Foundation
 
 private typealias References = (usrs: Set<String>, typealiases: Set<String>)
 private let identifierRegex = try Regex("([a-zA-Z_][a-zA-Z0-9_]*)")
-private let ignoreRegex = try Regex(#"// *ignore-import$"#)
+private let ignoreRegex = try Regex(#"// *@ignore-import$"#)
 private var cachedLines = [String: [String.SubSequence]]()
 
 private func getImports(path: String, recordReader: RecordReader) -> (Set<String>, [String: Int]) {
