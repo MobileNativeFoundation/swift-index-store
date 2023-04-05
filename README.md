@@ -73,13 +73,20 @@ http_archive(
     strip_prefix = "swift-index-store-%s" % SWIFT_INDEX_STORE_VERSION,
     url = "https://github.com/lyft/swift-index-store/archive/refs/tags/%s.tar.gz" % SWIFT_INDEX_STORE_VERSION,
 )
+
+load(
+    "@IndexStore//:repositories.bzl",
+    "swift_index_store_dependencies",
+)
+
+swift_index_store_dependencies()
 ```
 
 then you can consume the target like so:
 
 ```python
 deps = [
-    "@com_github_lyft_swift_index_store//:IndexStore",
+    "@IndexStore",
 ]
 ```
 
