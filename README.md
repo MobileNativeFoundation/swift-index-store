@@ -68,7 +68,7 @@ Add the following to your `WORKSPACE` file:
 SWIFT_INDEX_STORE_VERSION = "1.1.0"
 
 http_archive(
-    name = "com_github_lyft_swift_index_store",
+    name = "IndexStore",
     sha256 = "b9c7dbcf100783c55d2c24e491feab943a489b485b016016dcd3f3d568836b3b",
     strip_prefix = "swift-index-store-%s" % SWIFT_INDEX_STORE_VERSION,
     url = "https://github.com/lyft/swift-index-store/archive/refs/tags/%s.tar.gz" % SWIFT_INDEX_STORE_VERSION,
