@@ -21,8 +21,7 @@ let indexLinkerSettings: [LinkerSetting] = [
 ]
 
 let swiftDemangleLinkerSettings: [LinkerSetting] = [
-    .unsafeFlags(["-L\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"]),
-    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"]),
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
     // This is a hack to get Xcode's version instead of the system installed version
     .unsafeFlags(["-Xlinker", "-force_load", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/libswiftDemangle.dylib"]),
 ]
