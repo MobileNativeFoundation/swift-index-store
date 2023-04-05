@@ -97,8 +97,11 @@ public final class IndexStore {
 public final class UnitReader {
     private let reader: indexstore_unit_reader_t
 
+    public let name: String
+
     public init(indexStore: IndexStore, unitName: String) throws {
         var error: indexstore_error_t?
+        self.name = unitName
         if let reader = indexstore_unit_reader_create(indexStore.store, unitName, &error) {
             self.reader = reader
         } else {
@@ -209,8 +212,11 @@ public final class UnitDependency {
 public final class RecordReader {
     private let reader: indexstore_record_reader_t
 
+    public let name: String
+
     public init(indexStore: IndexStore, recordName: String) throws {
         var error: indexstore_error_t?
+        self.name = recordName
         if let reader = indexstore_record_reader_create(indexStore.store, recordName, &error) {
             self.reader = reader
         } else {
