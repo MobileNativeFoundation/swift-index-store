@@ -4,23 +4,31 @@ import PackageDescription
 
 #if os(macOS)
 import Foundation
-let linkerSettings: [LinkerSetting]? = {
-    let process = Process()
-    process.launchPath = "/usr/bin/xcode-select"
-    process.arguments = ["-p"]
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.launch()
-    process.waitUntilExit()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let XcodePath = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .newlines)
-    return [
-        .unsafeFlags(["-L\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
-        .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
-    ]
-}()
+
+let process = Process()
+process.launchPath = "/usr/bin/xcode-select"
+process.arguments = ["-p"]
+let pipe = Pipe()
+process.standardOutput = pipe
+process.launch()
+process.waitUntilExit()
+let data = pipe.fileHandleForReading.readDataToEndOfFile()
+let XcodePath = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .newlines)
+
+let indexLinkerSettings: [LinkerSetting] = [
+    .unsafeFlags(["-L\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
+]
+
+let swiftDemangleLinkerSettings: [LinkerSetting] = [
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib"]),
+    // This is a hack to get Xcode's version instead of the system installed version
+    .unsafeFlags(["-Xlinker", "-force_load", "-Xlinker", "\(XcodePath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/libswiftDemangle.dylib"]),
+]
+
 #else
-let linkerSettings: [LinkerSetting]? = nil
+let indexLinkerSettings: [LinkerSetting] = []
+let swiftDemangleLinkerSettings: [LinkerSetting] = [.linkedLibrary("swiftDemangle")]
 #endif
 
 let package = Package(
@@ -39,12 +47,12 @@ let package = Package(
     ],
     targets: [
         .target(name: "CIndexStore"),
-        .target(name: "IndexStore", dependencies: ["CIndexStore"], linkerSettings: linkerSettings),
+        .target(name: "IndexStore", dependencies: ["CIndexStore"], linkerSettings: indexLinkerSettings),
         .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"], exclude: ["BUILD", "Data"]),
         .target(
             name: "CSwiftDemangle",
             cxxSettings: [.headerSearchPath("PrivateHeaders/include")],
-            linkerSettings: [.linkedLibrary("swiftDemangle")]
+            linkerSettings: swiftDemangleLinkerSettings
         ),
         .target(name: "SwiftDemangle", dependencies: ["CSwiftDemangle"]),
         .testTarget(name: "SwiftDemangleTests", dependencies: ["SwiftDemangle"], exclude: ["BUILD"]),
