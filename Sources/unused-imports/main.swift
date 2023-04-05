@@ -40,7 +40,7 @@ private func getReferences(unitReader: UnitReader, recordReader: RecordReader) -
             let line = String(lines[occurrence.location.line - 1])
             let indexes = line.index(line.startIndex, offsetBy: occurrence.location.column - 1)..<line.endIndex
             let range = NSRange(indexes, in: line)
-            // FIXME: extension [Int] doesn't match
+            // FIXME: `extension [Int]` doesn't match
             guard let identifierRange = identifierRegex.firstMatch(in: line, range: range)?.range(at: 1) else {
                 return
             }
