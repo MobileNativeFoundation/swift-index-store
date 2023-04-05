@@ -94,7 +94,7 @@ public final class IndexStore {
     }
 }
 
-public final class UnitReader: Sendable {
+public final class UnitReader {
     private let reader: indexstore_unit_reader_t
 
     public init(indexStore: IndexStore, unitName: String) throws {
@@ -130,9 +130,9 @@ public final class UnitReader: Sendable {
         return indexstore_unit_reader_is_debug_compilation(self.reader)
     }
 
-    public var mainFile: String { String(indexstore_unit_reader_get_main_file(self.reader)) }
+    public private(set) lazy var mainFile = String(indexstore_unit_reader_get_main_file(self.reader))
 
-    public var moduleName: String { String(indexstore_unit_reader_get_module_name(self.reader)) }
+    public private(set) lazy var moduleName = String(indexstore_unit_reader_get_module_name(self.reader))
 
     public var workingDirectory: String { String(indexstore_unit_reader_get_working_dir(self.reader)) }
 
