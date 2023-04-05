@@ -60,6 +60,36 @@ let package = Package(
 )
 ```
 
+Bazel:
+
+Add the following to your `WORKSPACE` file:
+
+```python
+SWIFT_INDEX_STORE_VERSION = "1.1.0"
+
+http_archive(
+    name = "IndexStore",
+    sha256 = "b9c7dbcf100783c55d2c24e491feab943a489b485b016016dcd3f3d568836b3b",
+    strip_prefix = "swift-index-store-%s" % SWIFT_INDEX_STORE_VERSION,
+    url = "https://github.com/lyft/swift-index-store/archive/refs/tags/%s.tar.gz" % SWIFT_INDEX_STORE_VERSION,
+)
+
+load(
+    "@IndexStore//:repositories.bzl",
+    "swift_index_store_dependencies",
+)
+
+swift_index_store_dependencies()
+```
+
+then you can consume the target like so:
+
+```python
+deps = [
+    "@IndexStore",
+]
+```
+
 Xcode:
 
 1. Add the swift-index-store as a Package Dependency to your project (via File ▸ Add Packages…).
@@ -81,8 +111,8 @@ library which is part of LLVM. Xcode and Swift for Linux contain
 
 For more details on the index store's data model, see:
 
-1. Adding Index-While-Building and Refactoring to Clang: https://www.youtube.com/watch?v=jGJhnIT-D2M
-2. High level design: https://docs.google.com/document/d/1cH2sTpgSnJZCkZtJl1aY-rzy4uGPcrI-6RrUpdATO2Q/
+1. Adding Index-While-Building and Refactoring to Clang: <https://www.youtube.com/watch?v=jGJhnIT-D2M>
+2. High level design: <https://docs.google.com/document/d/1cH2sTpgSnJZCkZtJl1aY-rzy4uGPcrI-6RrUpdATO2Q/>
 
 ### How does this differ from [`indexstore-db`][indexstore-db]
 
