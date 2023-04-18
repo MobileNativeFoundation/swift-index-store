@@ -10,11 +10,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: swift-actions/setup-swift@v1
       - run: bazelisk build //...
+      - run: bazelisk test --build_tests_only --test_output=errors //Tests/...
   test-swiftpm:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: swift-actions/setup-swift@v1
       - run: swift build
+      - run: swift test
