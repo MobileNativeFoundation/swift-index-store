@@ -7,14 +7,14 @@ on:
       - main
 jobs:
   test-bazel:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v3
-      - uses: swift-actions/setup-swift@v1
       - run: bazelisk build //...
+      - run: bazelisk test //...
   test-swiftpm:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v3
-      - uses: swift-actions/setup-swift@v1
       - run: swift build
+      - run: swift test
