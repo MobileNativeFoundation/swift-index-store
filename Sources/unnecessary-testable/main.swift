@@ -181,8 +181,6 @@ func main(indexStorePath: String) {
         }
 
         let referencedUSRs = getReferenceUSRs(unitReader: unitReader, unitToRecord: unitToRecord)
-        // Handle modules that don't have units, like pre-compiled binaries, we cannot know if the USRs being
-        // referenced require @testable or not, so those are ignored
         var seenModules = Set<String>()
         var requiredTestableImports = Set<String>()
         for dependentUnit in units {
@@ -208,6 +206,11 @@ func main(indexStorePath: String) {
                     requiredTestableImports.insert(moduleName)
                 }
             }
+        }
+
+        let missingTestableModules = testableImports.subtracting(seenModules)
+        if !missingTestableModules.isEmpty {
+            fatalError("error: some modules import with @testable were not included in the index \(unitReader.mainFile): \(missingTestableModules)")
         }
 
         for module in testableImports.intersection(seenModules).subtracting(requiredTestableImports) {
