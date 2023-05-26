@@ -190,7 +190,7 @@ func main(indexStorePath: String) {
                 continue
             }
 
-            let moduleName = dependentUnit.moduleName.replacingOccurrences(of: "Tests", with: "")
+            let moduleName = dependentUnit.moduleName
             guard testableImports.contains(moduleName) else {
                 continue
             }
