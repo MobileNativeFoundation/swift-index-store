@@ -13,10 +13,6 @@ private func getTestableImports(path: String) -> Set<String> {
         fatalError("failed to read '\(path)'")
     }
 
-    if searchText.hasPrefix("// ignore-unnecessary-testable-imports") {
-        return []
-    }
-
     let matches = testableRegex.matches(
         in: searchText, range: NSRange(searchText.startIndex..<searchText.endIndex, in: searchText))
 
