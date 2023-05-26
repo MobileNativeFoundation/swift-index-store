@@ -108,7 +108,7 @@ private func isChildOfProtocol(occurrence: SymbolOccurrence) -> Bool {
 // The references in the index from callers of 'bar' reference both the 'bar' definition as well as the
 // 'instance method' definition defined at the location of 'get'. In this case for protocols we want to
 // inherit the ACL of the protocol itself, which is handled by isChildOfProtocol, and otherwise produces a
-// false negative because the parent of 'get' is 'bar' which is considered internal on prtocols. This function
+// false negative because the parent of 'get' is 'bar' which is considered internal on protocols. This function
 // allows us to ignore the duplicate reference of the 'get' and only use the 'bar' reference to determine if
 // testable is required.
 private func isGetterOrSetterFunction(occurrence: SymbolOccurrence) -> Bool {
