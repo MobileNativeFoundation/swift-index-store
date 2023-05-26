@@ -56,7 +56,8 @@ private func getReferenceUSRs(unitReader: UnitReader, unitToRecord: [String: Rec
 //   that we compare against
 // - This incorrectly handles internal(set) such that even if we only call the getter of something we will
 //   assume the testable is required
-// - This doesn't handle functions in the body of a public protocol since that line is not marked public
+// - This doesn't handle functions in the body of a public protocol since that line is not marked public only
+//   the protocol itself is
 // - This doesn't differentiate between `public` and `public final`, so if you subclass the class you need
 //   the testable import in the `public` case
 private func isPublic(file: String, occurrence: SymbolOccurrence) -> Bool {
