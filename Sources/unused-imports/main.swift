@@ -7,6 +7,57 @@ private let identifierRegex = try Regex("([a-zA-Z_][a-zA-Z0-9_]*)")
 private let ignoreRegex = try Regex(#"// *@ignore-import$"#)
 private var cachedLines = [String: [String.SubSequence]]()
 
+private struct Configuration: Decodable {
+    let ignoredFileRegex: Regex<AnyRegexOutput>?
+    let ignoredModuleRegex: Regex<AnyRegexOutput>?
+    let alwaysKeepImports: Set<String>
+
+    private enum CodingKeys: String, CodingKey {
+        case ignoredFileRegex = "ignored-file-regex"
+        case ignoredModuleRegex = "ignored-module-regex"
+        case alwaysKeepImports = "always-keep-imports"
+    }
+
+    init() {
+        self.alwaysKeepImports = []
+        self.ignoredFileRegex = nil
+        self.ignoredModuleRegex = nil
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.alwaysKeepImports = Set(try values.decodeIfPresent([String].self, forKey: .alwaysKeepImports) ?? [])
+
+        if let string = try values.decodeIfPresent(String.self, forKey: .ignoredFileRegex) {
+            self.ignoredFileRegex = try Regex(string)
+        } else {
+            self.ignoredFileRegex = nil
+        }
+
+        if let string = try values.decodeIfPresent(String.self, forKey: .ignoredModuleRegex) {
+            self.ignoredModuleRegex = try Regex(string)
+        } else {
+            self.ignoredModuleRegex = nil
+        }
+    }
+
+    func shouldIgnoreFile(_ file: String) -> Bool {
+        if let ignoredFileRegex, file.wholeMatch(of: ignoredFileRegex) != nil {
+            return true
+        }
+
+        return false
+    }
+
+    func shouldIgnoreModule(_ module: String) -> Bool {
+        if let ignoredModuleRegex, module.wholeMatch(of: ignoredModuleRegex) != nil {
+            return true
+        }
+
+        return false
+    }
+}
+
 private func getImports(path: String, recordReader: RecordReader) -> (Set<String>, [String: Int]) {
     var importsToLineNumbers = [String: Int]()
     let lines = try! String(contentsOfFile: path).split(separator: "\n", omittingEmptySubsequences: false)
@@ -92,10 +143,9 @@ private func collectUnitsAndRecords(indexStorePath: String) -> [(UnitReader, Rec
     return unitsAndRecords
 }
 
-func main(
+private func main(
     indexStorePath: String,
-    ignoredFileRegex: Regex<AnyRegexOutput>?,
-    ignoredModuleRegex: Regex<AnyRegexOutput>?)
+    configuration: Configuration)
 {
     if let directory = ProcessInfo.processInfo.environment["BUILD_WORKSPACE_DIRECTORY"] {
         FileManager.default.changeCurrentDirectoryPath(directory)
@@ -130,9 +180,9 @@ func main(
     }
 
     for (unitReader, recordReader) in unitsAndRecords {
-        if let ignoredFileRegex, unitReader.mainFile.wholeMatch(of: ignoredFileRegex) != nil {
+        if configuration.shouldIgnoreFile(unitReader.mainFile) {
             continue
-        } else if let ignoredModuleRegex, unitReader.moduleName.wholeMatch(of: ignoredModuleRegex) != nil {
+        } else if configuration.shouldIgnoreModule(unitReader.moduleName) {
             continue
         }
 
@@ -171,7 +221,7 @@ func main(
             }
         }
 
-        let unusedImports = allImports.subtracting(usedImports)
+        let unusedImports = allImports.subtracting(usedImports).subtracting(configuration.alwaysKeepImports)
         if !unusedImports.isEmpty {
             let sedCmd = unusedImports.map { importsToLineNumbers[$0]! }.sorted().map { "\($0)d" }.joined(separator: ";")
             let relativePath = unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: "")
@@ -180,19 +230,17 @@ func main(
     }
 }
 
-if CommandLine.arguments.count == 4 {
-    let ignoredFileRegex = try Regex(CommandLine.arguments[2])
-    let ignoredModuleRegex = try Regex(CommandLine.arguments[3])
+if CommandLine.arguments.count == 3 {
+    let configurationData = try! Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
+    let configuration = try! JSONDecoder().decode(Configuration.self, from: configurationData)
 
     main(
-        indexStorePath: CommandLine.arguments[1],
-        ignoredFileRegex: ignoredFileRegex,
-        ignoredModuleRegex: ignoredModuleRegex
+        indexStorePath: CommandLine.arguments[2],
+        configuration: configuration
     )
 } else {
     main(
         indexStorePath: CommandLine.arguments[1],
-        ignoredFileRegex: nil,
-        ignoredModuleRegex: nil
+        configuration: Configuration()
     )
 }
