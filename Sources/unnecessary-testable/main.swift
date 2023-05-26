@@ -68,17 +68,16 @@ private func isPublic(file: String, occurrence: SymbolOccurrence, isOverride: Bo
         return false
     }
 
-    let contents = try! String(contentsOfFile: file)
-    let text = contents.components(separatedBy: .newlines)[occurrence.location.line - 1]
-
     // enum cases aren't explicitly marked public but inherit their ACL from their type definition. This is
     // overly permissive since the enum could be internal, but it's very likely the file also contains a
     // reference to the actual enum in that case, which will correctly bet determined to be public/internal,
     // so it should still resolve the testable import correctly.
-    if text.contains("case ") {
+    if occurrence.symbol.kind == .enumConstant {
         return true
     }
 
+    let contents = try! String(contentsOfFile: file)
+    let text = contents.components(separatedBy: .newlines)[occurrence.location.line - 1]
     let isPublic = (text.contains("public ") && !isOverride) || text.contains("open ")
     // Handle public members that explicitly set 'internal(set)' for allowing setting from tests
     return isPublic && !text.contains(" internal(")
