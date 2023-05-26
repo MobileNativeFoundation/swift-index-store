@@ -6,7 +6,7 @@ private let kProtocolChildrenTypes: [SymbolKind] = [
     .instanceProperty, .classProperty, .staticProperty,
 ]
 private let testableRegex = try NSRegularExpression(
-    pattern: "^\\@testable import ([^ .]+)$", options: [.anchorsMatchLines])
+    pattern: "^\\@testable import ([^\\s.]+)$", options: [.anchorsMatchLines])
 
 private func getTestableImports(path: String) -> Set<String> {
     guard let searchText = try? String(contentsOfFile: path) else {
