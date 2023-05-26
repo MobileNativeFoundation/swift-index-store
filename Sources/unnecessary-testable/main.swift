@@ -25,20 +25,26 @@ private func getTestableImports(path: String) -> Set<String> {
     })
 }
 
-private func getReferenceUSRs(unitReader: UnitReader, unitToRecord: [String: RecordReader]) -> Set<String> {
+private func getReferenceUSRs(unitReader: UnitReader, unitToRecord: [String: RecordReader])
+    -> (Set<String>, Set<String>)
+{
     // Empty source files have units but no records
     guard let recordReader = unitToRecord[unitReader.mainFile] else {
-        return []
+        return ([], [])
     }
 
     var usrs = Set<String>()
+    var overrideUSRs = Set<String>()
     recordReader.forEach { (occurrence: SymbolOccurrence) in
         if occurrence.roles.contains(.reference) {
             usrs.insert(occurrence.symbol.usr)
+            if occurrence.roles.contains(.overrideOf) || occurrence.roles.contains(.baseOf) {
+                overrideUSRs.insert(occurrence.symbol.usr)
+            }
         }
     }
 
-    return usrs
+    return (usrs, overrideUSRs)
 }
 
 // TODO: Improve this. Issues:
@@ -56,7 +62,7 @@ private func getReferenceUSRs(unitReader: UnitReader, unitToRecord: [String: Rec
 //   the protocol itself is
 // - This doesn't differentiate between `public` and `public final`, so if you subclass the class you need
 //   the testable import in the `public` case
-private func isPublic(file: String, occurrence: SymbolOccurrence) -> Bool {
+private func isPublic(file: String, occurrence: SymbolOccurrence, isOverride: Bool) -> Bool {
     // Assume implicit declarations (generated memberwise initializers) require testable
     if occurrence.roles.contains(.implicit) && !occurrence.roles.contains(.accessorOf) {
         return false
@@ -73,7 +79,7 @@ private func isPublic(file: String, occurrence: SymbolOccurrence) -> Bool {
         return true
     }
 
-    let isPublic = text.contains("public ") || text.contains("open ")
+    let isPublic = (text.contains("public ") && !isOverride) || text.contains("open ")
     // Handle public members that explicitly set 'internal(set)' for allowing setting from tests
     return isPublic && !text.contains(" internal(")
 }
@@ -180,7 +186,7 @@ func main(indexStorePath: String) {
             continue
         }
 
-        let referencedUSRs = getReferenceUSRs(unitReader: unitReader, unitToRecord: unitToRecord)
+        let (referencedUSRs, overrideUSRs) = getReferenceUSRs(unitReader: unitReader, unitToRecord: unitToRecord)
         var seenModules = Set<String>()
         var requiredTestableImports = Set<String>()
         for dependentUnit in units {
@@ -205,7 +211,8 @@ func main(indexStorePath: String) {
                     referencedUSRs.contains(occurrence.symbol.usr) &&
                     !isChildOfProtocol(occurrence: occurrence) &&
                     !isGetterOrSetterFunction(occurrence: occurrence) &&
-                    !isPublic(file: dependentUnit.mainFile, occurrence: occurrence)
+                    !isPublic(file: dependentUnit.mainFile, occurrence: occurrence,
+                              isOverride: overrideUSRs.contains(occurrence.symbol.usr))
                 {
                     requiredTestableImports.insert(moduleName)
                 }
