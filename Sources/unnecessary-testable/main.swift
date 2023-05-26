@@ -193,6 +193,10 @@ func main(indexStorePath: String) {
                 continue
             }
 
+            if requiredTestableImports.contains(moduleName) {
+                continue
+            }
+
             seenModules.insert(moduleName)
 
             recordReader.forEach { (occurrence: SymbolOccurrence) in
