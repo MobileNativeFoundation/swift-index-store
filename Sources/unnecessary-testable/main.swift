@@ -173,17 +173,13 @@ func main(indexStorePath: String) {
             }
 
             seenModules.insert(moduleName)
-            if isGeneratedFile(dependentUnit.mainFile) {
-                continue
-            }
 
             recordReader.forEach { (occurrence: SymbolOccurrence) in
                 if
-                    occurrence.symbol.name.contains("I18N") ||
-                    (occurrence.roles.contains(.definition) &&
+                    occurrence.roles.contains(.definition) &&
                     referencedUSRs.contains(occurrence.symbol.usr) &&
                     !isChildOfProtocol(occurrence: occurrence) &&
-                    !isPublic(file: dependentUnit.mainFile, occurrence: occurrence))
+                    !isPublic(file: dependentUnit.mainFile, occurrence: occurrence)
                 {
                     requiredTestableImports.insert(moduleName)
                 }
