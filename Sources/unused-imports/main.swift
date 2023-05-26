@@ -106,27 +106,28 @@ func main(
     let unitsAndRecords = collectUnitsAndRecords(indexStorePath: indexStorePath)
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
+    var allDefinedUSRs = Set<String>()
 
     for (unitReader, recordReader) in unitsAndRecords {
         allModuleNames.insert(unitReader.moduleName)
         modulesToUnits[unitReader.moduleName, default: []].append(unitReader)
 
-        var definedUsrs = Set<String>()
+        var definedUSRs = Set<String>()
         var definedTypealiases = Set<String>()
 
         recordReader.forEach { (occurrence: SymbolOccurrence) in
             if occurrence.roles.contains(.definition) {
-                definedUsrs.insert(occurrence.symbol.usr)
+                definedUSRs.insert(occurrence.symbol.usr)
+                allDefinedUSRs.insert(occurrence.symbol.usr)
 
                 if occurrence.symbol.kind == .typealias {
                     definedTypealiases.insert(occurrence.symbol.name)
                 }
             }
-
         }
 
         filesToDefinitions[unitReader.mainFile] = References(
-            usrs: definedUsrs, typealiases: definedTypealiases)
+            usrs: definedUSRs, typealiases: definedTypealiases)
     }
 
     for (unitReader, recordReader) in unitsAndRecords {
@@ -139,15 +140,60 @@ func main(
         let (rawImports, importsToLineNumbers) = getImports(
             path: unitReader.mainFile, recordReader: recordReader)
         let allImports = rawImports.intersection(allModuleNames)
-        if allImports.isEmpty {
+        if allImports.isEmpty { // TODO: maybe has to be removed to add missing imports?
             continue
         }
 
+        let currentModule = unitReader.moduleName
         let references = getReferences(unitReader: unitReader, recordReader: recordReader)
+        var remainingUSRs = references.usrs.intersection(allDefinedUSRs)
         var usedImports = Set<String>()
-        for anImport in allImports {
+        // NOTE: Including currentModule helps us eliminate USRs here as opposed to the fallthrough case
+        for anImport in allImports + [currentModule] {
             for dependentUnit in modulesToUnits[anImport] ?? [] {
-                if usedImports.contains(anImport) {
+                // if usedImports.contains(anImport) {
+                //     break
+                // }
+
+                if remainingUSRs.isEmpty {
+                    break
+                }
+
+                // if dependentUnit.moduleName == currentModule {
+                //     continue
+                // }
+
+                // Empty files have units but no records and therefore no usrs
+                guard let definitions = filesToDefinitions[dependentUnit.mainFile] else {
+                    continue
+                }
+
+                if !definitions.usrs.intersection(remainingUSRs).isEmpty {
+                    usedImports.insert(dependentUnit.moduleName)
+                    remainingUSRs.subtract(definitions.usrs)
+                } else if !definitions.typealiases.intersection(references.typealiases).isEmpty {
+                    // If the typealias isn't already imported then it's probably not the one we're looking for
+                    if allImports.contains(dependentUnit.moduleName) {
+                        usedImports.insert(dependentUnit.moduleName)
+                    }
+                }
+
+                // if allImports.subtracting(usedImports).isEmpty { // TODO: maybe this has to be removed to add missing imports?
+                //     break
+                // }
+            }
+        }
+
+        // TODO: Splitting it up like this might be unnecessary. The assumption is that in the majority case
+        // everything will be covered by things that are already imported, in which case looping through all
+        // the units is unnecessary and very expensive.
+        if !remainingUSRs.isEmpty {
+            for (dependentUnit, _) in unitsAndRecords {
+                if dependentUnit.moduleName == currentModule {
+                    continue
+                }
+
+                if remainingUSRs.isEmpty {
                     break
                 }
 
@@ -156,26 +202,27 @@ func main(
                     continue
                 }
 
-                if !definitions.usrs.intersection(references.usrs).isEmpty {
+                if !definitions.usrs.intersection(remainingUSRs).isEmpty {
                     usedImports.insert(dependentUnit.moduleName)
-                } else if !definitions.typealiases.intersection(references.typealiases).isEmpty {
-                    // If the typealias isn't already imported then it's probably not the one we're looking for
-                    if allImports.contains(dependentUnit.moduleName) {
-                        usedImports.insert(dependentUnit.moduleName)
-                    }
+                    remainingUSRs.subtract(definitions.usrs)
                 }
-            }
-
-            if allImports.subtracting(usedImports).isEmpty {
-                break
             }
         }
 
+        usedImports.remove(currentModule)
+        assert(!usedImports.contains(currentModule))
         let unusedImports = allImports.subtracting(usedImports)
         if !unusedImports.isEmpty {
             let sedCmd = unusedImports.map { importsToLineNumbers[$0]! }.sorted().map { "\($0)d" }.joined(separator: ";")
             let relativePath = unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: "")
             print("/usr/bin/sed -i \"\" '\(sedCmd)' '\(relativePath)'")
+        }
+
+        let newImports = usedImports.subtracting(allImports).intersection(allModuleNames)
+        if !newImports.isEmpty {
+            let lines = newImports.sorted().map { "import \($0)" }.joined(separator: "\\\n")
+            let relativePath = unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: "")
+            print("/usr/bin/sed -i \"\" '1i\\\n\(lines)' \(relativePath)")
         }
     }
 }
