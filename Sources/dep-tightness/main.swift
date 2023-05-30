@@ -80,7 +80,8 @@ func main(indexStorePath: String) {
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
     var allDefinedUSRs = Set<String>()
-    var output = [String: [String: Int]]()
+    var definedIn = [String: String]()
+    var usedIn = [String: Set<String>]()
 
     for (unitReader, recordReader) in unitsAndRecords {
         allModuleNames.insert(unitReader.moduleName)
@@ -88,14 +89,22 @@ func main(indexStorePath: String) {
 
         var definedUSRs = Set<String>()
         recordReader.forEach { (occurrence: SymbolOccurrence) in
-            if occurrence.roles.contains(.definition) {
+            if occurrence.roles.contains(.definition) 
+            && !occurrence.roles.contains(.implicit)
+            && !occurrence.roles.contains(.accessorOf)
+            && !occurrence.roles.contains(.baseOf)
+            && !occurrence.roles.contains(.overrideOf)
+            {
                 definedUSRs.insert(occurrence.symbol.usr)
                 allDefinedUSRs.insert(occurrence.symbol.usr)
+                definedIn[occurrence.symbol.usr] = unitReader.moduleName
             }
         }
 
         filesToDefinitions[unitReader.mainFile] = definedUSRs
     }
+
+    print(allDefinedUSRs.count)
 
     for (unitReader, recordReader) in unitsAndRecords {
         let rawImports = getImports(path: unitReader.mainFile, recordReader: recordReader)
@@ -113,17 +122,25 @@ func main(indexStorePath: String) {
                 }
 
                 let intersection = definedUSRs.intersection(references)
-                if !intersection.isEmpty {
-                    output[currentModule, default: [:]][anImport, default: 0] += intersection.count
+                for referenced in intersection {
+                    usedIn[referenced, default: []].insert(currentModule)
                 }
             }
         }
     }
 
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
-    let data = try! encoder.encode(output)
-    print(String(data: data, encoding: .utf8)!)
+    for (usr, users) in usedIn {
+        if users.count > 1 {
+            // TODO: you could probably come up with something smarter for this, maybe if multiple modules
+            // depended on it but they were further up the dependency tree it could still be moved up
+            // somewhere
+            continue
+        }
+
+        if users.first! != definedIn[usr]! {
+            print("\(usr) should be moved from \(definedIn[usr]!) to \(users.first!)")
+        }
+    }
 }
 
 main(indexStorePath: CommandLine.arguments[1])
