@@ -7,18 +7,32 @@ import CIndexStore
 // also has variants that take a raw C callback function, which are named `*_apply_f`. Ideally, this Swift
 // wrapper would use the closure variants, but for Linux portability it uses C function callbacks.
 //
-// C functions don't capture variables, which is why the `apply_f` API takes a context pointer. The following
-// pattern is generally used for calling the `apply_f` functions:
-//
-//     typealias Context = (<types>)
-//     var context = (<values>)
-//     indexstore_..._apply_f(<args>, &context) { context, <object> in
-//         let (<captures>) = context!.assumingMemoryBound(to: Context.self).pointee
+// C functions don't capture variables, which is why the `apply_f` API takes a context pointer. The Context
+// types are used for calling the `apply_f` functions:
 //
 // The key points are:
-//   1. A context tuple var is created
+//   1. A context is created
 //   2. The context is passed by pointer to the `apply_f` function
-//   3. The context is unpacked using `assumingMemoryBound(to: Context.self).pointee`
+//   3. The context is unpacked
+//   4. If necessary the callback closure is called using withoutActuallyEscaping
+
+private class Context<Callback, Parent: AnyObject> {
+    unowned var this: Parent
+    let callback: Callback
+
+    init(callback: Callback, this: Parent) {
+        self.callback = callback
+        self.this = this
+    }
+
+    func pointer() -> UnsafeMutableRawPointer {
+        unsafeBitCast(Unmanaged.passUnretained(self), to: UnsafeMutableRawPointer.self)
+    }
+
+    static func cast(_ pointer: UnsafeMutableRawPointer!) -> Context<Callback, Parent> {
+        Unmanaged<Context<Callback, Parent>>.fromOpaque(pointer).takeUnretainedValue()
+    }
+}
 
 public final class IndexStore {
     fileprivate let store: indexstore_t
@@ -38,17 +52,13 @@ public final class IndexStore {
     }
 
     public var unitNames: [String] {
-        var unitNames: [String] = []
+        var unitNames = [String]()
+        let context = Context(callback: { unitNames.append($0) }, this: self)
+        let pointer = context.pointer()
 
-        typealias Callback = (String) -> Void
-        typealias Context = Callback
-        // Using a closure is a workaround. Attempts to pass a pointer to an array directly ended in failure.
-        // When doing so, calling `append(_:)` caused memory assertions. Wrapping `append(_:)` in a closure
-        // does work in practice.
-        var context = { unitNames.append($0) }
-        indexstore_store_units_apply_f(self.store, /*unsorted*/0, &context) { context, unitName in
-            let callback = context!.assumingMemoryBound(to: Context.self).pointee
-            callback(String(unitName))
+        indexstore_store_units_apply_f(self.store, /*unsorted*/0, pointer) { pointer, unitName in
+            let context = Context<(String) -> Void, IndexStore>.cast(pointer)
+            context.callback(String(unitName))
             return true
         }
 
@@ -170,15 +180,16 @@ public final class UnitReader {
     }
 
     public func forEach(dependency callback: (UnitDependency) -> Void) {
-        typealias Callback = (UnitDependency) -> Void
-        typealias Context = (UnitReader, Callback)
-        var context = (self, callback)
-        indexstore_unit_reader_dependencies_apply_f(self.reader, &context) { context, unitDependency in
-            if let unitDependency = unitDependency {
-                let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-                callback(UnitDependency(this, unitDependency))
+        withoutActuallyEscaping(callback) { callback in
+            let context = Context.init(callback: callback, this: self)
+            let pointer = context.pointer()
+            indexstore_unit_reader_dependencies_apply_f(self.reader, pointer) { pointer, unitDependency in
+                if let unitDependency = unitDependency {
+                    let context = Context<(UnitDependency) -> Void, UnitReader>.cast(pointer)
+                    context.callback(UnitDependency(context.this, unitDependency))
+                }
+                return true
             }
-            return true
         }
     }
 }
@@ -229,28 +240,30 @@ public final class RecordReader {
     }
 
     public func forEach(symbol callback: (Symbol) -> Void) {
-        typealias Callback = (Symbol) -> Void
-        typealias Context = (RecordReader, Callback)
-        var context = (self, callback)
-        indexstore_record_reader_symbols_apply_f(self.reader, /*nocache*/true, &context) { context, symbol in
-            if let symbol = symbol {
-                let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-                callback(Symbol(this, symbol))
+        withoutActuallyEscaping(callback) { callback in
+            let context = Context(callback: callback, this: self)
+            let pointer = context.pointer()
+            indexstore_record_reader_symbols_apply_f(self.reader, /*nocache*/true, pointer) { pointer, symbol in
+                if let symbol = symbol {
+                    let context = Context<(Symbol) -> Void, RecordReader>.cast(pointer)
+                    context.callback(Symbol(context.this, symbol))
+                }
+                return true
             }
-            return true
         }
     }
 
     public func forEach(occurrence callback: (SymbolOccurrence) -> Void) {
-        typealias Callback = (SymbolOccurrence) -> Void
-        typealias Context = (RecordReader, Callback)
-        var context = (self, callback)
-        indexstore_record_reader_occurrences_apply_f(self.reader, &context) { context, occurrence in
-            if let occurrence = occurrence {
-                let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-                callback(SymbolOccurrence(this, occurrence))
+        withoutActuallyEscaping(callback) { callback in
+            let context = Context(callback: callback, this: self)
+            let pointer = context.pointer()
+            indexstore_record_reader_occurrences_apply_f(self.reader, pointer) { pointer, occurrence in
+                if let occurrence = occurrence {
+                    let context = Context<(SymbolOccurrence) -> Void, RecordReader>.cast(pointer)
+                    context.callback(SymbolOccurrence(context.this, occurrence))
+                }
+                return true
             }
-            return true
         }
     }
 }
@@ -278,15 +291,17 @@ public final class SymbolOccurrence {
     }
 
     public func forEach(relation callback: (Symbol, SymbolRoles) -> Void) {
-        typealias Callback = (Symbol, SymbolRoles) -> Void
-        typealias Context = (SymbolOccurrence, Callback)
-        var context = (self, callback)
-        indexstore_occurrence_relations_apply_f(self.occurrence, &context) { context, relation in
-            let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-            let symbol = Symbol(this.recordReader, indexstore_symbol_relation_get_symbol(relation))
-            let roles = SymbolRoles(indexstore_symbol_relation_get_roles(relation))
-            callback(symbol, roles)
-            return true
+        withoutActuallyEscaping(callback) { callback in
+            let context = Context(callback: callback, this: self)
+            let pointer = context.pointer()
+
+            indexstore_occurrence_relations_apply_f(self.occurrence, pointer) { pointer, relation in
+                let context = Context<(Symbol, SymbolRoles) -> Void, SymbolOccurrence>.cast(pointer)
+                let symbol = Symbol(context.this.recordReader, indexstore_symbol_relation_get_symbol(relation))
+                let roles = SymbolRoles(indexstore_symbol_relation_get_roles(relation))
+                context.callback(symbol, roles)
+                return true
+            }
         }
     }
 }
