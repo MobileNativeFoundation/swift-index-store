@@ -32,7 +32,7 @@ fileprivate func determineXcodeIndexStorePath() -> String? {
 
     return libraryPath.split(separator: ":")
         .filter { $0.hasSuffix("/Build/Products/Debug") }
-        .map { "\($0)/../../../Index/DataStore" }
+        .map { "\($0)/../../../Index.noindex/DataStore" }
         .filter { path in
             var isDir: ObjCBool = false
             return FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
