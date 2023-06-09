@@ -181,7 +181,7 @@ public final class UnitReader {
 
     public func forEach(dependency callback: (UnitDependency) -> Void) {
         withoutActuallyEscaping(callback) { callback in
-            let context = Context.init(callback: callback, this: self)
+            let context = Context(callback: callback, this: self)
             let pointer = context.pointer()
             indexstore_unit_reader_dependencies_apply_f(self.reader, pointer) { pointer, unitDependency in
                 if let unitDependency = unitDependency {
