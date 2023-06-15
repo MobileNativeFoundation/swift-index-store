@@ -46,10 +46,12 @@ public final class IndexStore {
         // When doing so, calling `append(_:)` caused memory assertions. Wrapping `append(_:)` in a closure
         // does work in practice.
         var context = { unitNames.append($0) }
-        indexstore_store_units_apply_f(self.store, /*unsorted*/0, &context) { context, unitName in
-            let callback = context!.assumingMemoryBound(to: Context.self).pointee
-            callback(String(unitName))
-            return true
+        withUnsafeMutablePointer(to: &context) {
+            _ = indexstore_store_units_apply_f(self.store, /*unsorted*/0, $0) { context, unitName in
+                let callback = context!.assumingMemoryBound(to: Context.self).pointee
+                callback(String(unitName))
+                return true
+            }
         }
 
         return unitNames
@@ -172,13 +174,17 @@ public final class UnitReader {
     public func forEach(dependency callback: (UnitDependency) -> Void) {
         typealias Callback = (UnitDependency) -> Void
         typealias Context = (UnitReader, Callback)
-        var context = (self, callback)
-        indexstore_unit_reader_dependencies_apply_f(self.reader, &context) { context, unitDependency in
-            if let unitDependency = unitDependency {
-                let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-                callback(UnitDependency(this, unitDependency))
+        withoutActuallyEscaping(callback) { callback in
+            var context = (self, callback)
+            withUnsafeMutablePointer(to: &context) {
+                _ = indexstore_unit_reader_dependencies_apply_f(self.reader, $0) { context, unitDependency in
+                    if let unitDependency = unitDependency {
+                        let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
+                        callback(UnitDependency(this, unitDependency))
+                    }
+                    return true
+                }
             }
-            return true
         }
     }
 }
@@ -231,26 +237,34 @@ public final class RecordReader {
     public func forEach(symbol callback: (Symbol) -> Void) {
         typealias Callback = (Symbol) -> Void
         typealias Context = (RecordReader, Callback)
-        var context = (self, callback)
-        indexstore_record_reader_symbols_apply_f(self.reader, /*nocache*/true, &context) { context, symbol in
-            if let symbol = symbol {
-                let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-                callback(Symbol(this, symbol))
+        withoutActuallyEscaping(callback) { callback in
+            var context = (self, callback)
+            withUnsafeMutablePointer(to: &context) {
+                _ = indexstore_record_reader_symbols_apply_f(self.reader, /*nocache*/true, $0) { context, symbol in
+                    if let symbol = symbol {
+                        let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
+                        callback(Symbol(this, symbol))
+                    }
+                    return true
+                }
             }
-            return true
         }
     }
 
     public func forEach(occurrence callback: (SymbolOccurrence) -> Void) {
         typealias Callback = (SymbolOccurrence) -> Void
         typealias Context = (RecordReader, Callback)
-        var context = (self, callback)
-        indexstore_record_reader_occurrences_apply_f(self.reader, &context) { context, occurrence in
-            if let occurrence = occurrence {
-                let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-                callback(SymbolOccurrence(this, occurrence))
+        withoutActuallyEscaping(callback) { callback in
+            var context = (self, callback)
+            withUnsafeMutablePointer(to: &context) {
+                _ = indexstore_record_reader_occurrences_apply_f(self.reader, $0) { context, occurrence in
+                    if let occurrence = occurrence {
+                        let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
+                        callback(SymbolOccurrence(this, occurrence))
+                    }
+                    return true
+                }
             }
-            return true
         }
     }
 }
@@ -280,13 +294,17 @@ public final class SymbolOccurrence {
     public func forEach(relation callback: (Symbol, SymbolRoles) -> Void) {
         typealias Callback = (Symbol, SymbolRoles) -> Void
         typealias Context = (SymbolOccurrence, Callback)
-        var context = (self, callback)
-        indexstore_occurrence_relations_apply_f(self.occurrence, &context) { context, relation in
-            let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
-            let symbol = Symbol(this.recordReader, indexstore_symbol_relation_get_symbol(relation))
-            let roles = SymbolRoles(indexstore_symbol_relation_get_roles(relation))
-            callback(symbol, roles)
-            return true
+        withoutActuallyEscaping(callback) { callback in
+            var context = (self, callback)
+            withUnsafeMutablePointer(to: &context) {
+                _ = indexstore_occurrence_relations_apply_f(self.occurrence, $0) { context, relation in
+                    let (this, callback) = context!.assumingMemoryBound(to: Context.self).pointee
+                    let symbol = Symbol(this.recordReader, indexstore_symbol_relation_get_symbol(relation))
+                    let roles = SymbolRoles(indexstore_symbol_relation_get_roles(relation))
+                    callback(symbol, roles)
+                    return true
+                }
+            }
         }
     }
 }
