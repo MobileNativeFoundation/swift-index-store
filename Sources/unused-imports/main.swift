@@ -8,6 +8,18 @@ private let ignoreRegex = try Regex(#"// *@ignore-import$"#)
 private var cachedLines = [String: [String.SubSequence]]()
 
 private struct Configuration: Decodable {
+    static func attemptingPath(_ path: String?) -> Configuration? {
+        guard let path else { return nil }
+        do {
+            return try JSONDecoder().decode(
+                Configuration.self,
+                from: try Data(contentsOf: URL(fileURLWithPath: path))
+            )
+        } catch {
+            return nil
+        }
+    }
+
     let ignoredFileRegex: Regex<AnyRegexOutput>?
     let ignoredModuleRegex: Regex<AnyRegexOutput>?
     let alwaysKeepImports: Set<String>
@@ -144,7 +156,7 @@ private func collectUnitsAndRecords(indexStorePath: String) -> [(UnitReader, Rec
 }
 
 private func main(
-    indexStorePath: String,
+    indexStorePaths: [String],
     configuration: Configuration)
 {
     if let directory = ProcessInfo.processInfo.environment["BUILD_WORKSPACE_DIRECTORY"] {
@@ -153,7 +165,7 @@ private func main(
 
     let pwd = FileManager.default.currentDirectoryPath
     var filesToDefinitions: [String: References] = [:]
-    let unitsAndRecords = collectUnitsAndRecords(indexStorePath: indexStorePath)
+    let unitsAndRecords = indexStorePaths.flatMap(collectUnitsAndRecords(indexStorePath:))
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
 
@@ -230,17 +242,15 @@ private func main(
     }
 }
 
-if CommandLine.arguments.count == 3 {
-    let configurationData = try! Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
-    let configuration = try! JSONDecoder().decode(Configuration.self, from: configurationData)
-
+let arguments = CommandLine.arguments.dropFirst()
+if let configuration = Configuration.attemptingPath(arguments.first) {
     main(
-        indexStorePath: CommandLine.arguments[2],
+        indexStorePaths: Array(arguments.dropFirst()),
         configuration: configuration
     )
 } else {
     main(
-        indexStorePath: CommandLine.arguments[1],
+        indexStorePaths: Array(arguments),
         configuration: Configuration()
     )
 }
