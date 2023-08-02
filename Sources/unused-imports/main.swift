@@ -23,17 +23,20 @@ private struct Configuration: Decodable {
     let ignoredFileRegex: Regex<AnyRegexOutput>?
     let ignoredModuleRegex: Regex<AnyRegexOutput>?
     let alwaysKeepImports: Set<String>
+    let reporter: UnusedImportReporter?
 
     private enum CodingKeys: String, CodingKey {
         case ignoredFileRegex = "ignored-file-regex"
         case ignoredModuleRegex = "ignored-module-regex"
         case alwaysKeepImports = "always-keep-imports"
+        case reporter = "reporter"
     }
 
     init() {
         self.alwaysKeepImports = []
         self.ignoredFileRegex = nil
         self.ignoredModuleRegex = nil
+        self.reporter = nil
     }
 
     init(from decoder: Decoder) throws {
@@ -51,6 +54,16 @@ private struct Configuration: Decodable {
         } else {
             self.ignoredModuleRegex = nil
         }
+
+        if let string = try values.decodeIfPresent(String.self, forKey: .reporter) {
+            if string == "json" {
+                self.reporter = JSONReporter()
+            } else {
+                self.reporter = nil
+            }
+        } else {
+            self.reporter = nil
+        }
     }
 
     func shouldIgnoreFile(_ file: String) -> Bool {
@@ -67,6 +80,11 @@ private struct Configuration: Decodable {
         }
 
         return false
+    }
+
+    func didFind(sourceFilesWithUnusedImports: [SourceFileWithUnusedImports]) {
+        let selectedReporter = self.reporter ?? SedCommandReporter()
+        selectedReporter.didFind(sourceFilesWithUnusedImports: sourceFilesWithUnusedImports)
     }
 }
 
@@ -191,6 +209,8 @@ private func main(
             usrs: definedUsrs, typealiases: definedTypealiases)
     }
 
+    var sourceFilesWithUnusedImports: [SourceFileWithUnusedImports] = []
+
     for (unitReader, recordReader) in unitsAndRecords {
         if configuration.shouldIgnoreFile(unitReader.mainFile) {
             continue
@@ -235,10 +255,16 @@ private func main(
 
         let unusedImports = allImports.subtracting(usedImports).subtracting(configuration.alwaysKeepImports)
         if !unusedImports.isEmpty {
-            let sedCmd = unusedImports.map { importsToLineNumbers[$0]! }.sorted().map { "\($0)d" }.joined(separator: ";")
-            let relativePath = unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: "")
-            print("/usr/bin/sed -i \"\" '\(sedCmd)' '\(relativePath)'")
-        }
+            let sourceFileWithUnusedImports = SourceFileWithUnusedImports(
+                path: unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: ""),
+                unusedImportStatements: unusedImports.map { UnusedImportStatement(moduleName: $0, lineNumber: importsToLineNumbers[$0]!) }.sorted()
+            )
+            sourceFilesWithUnusedImports.append(sourceFileWithUnusedImports)
+         }
+    }
+
+    if sourceFilesWithUnusedImports.count != 0 {
+        configuration.didFind(sourceFilesWithUnusedImports: sourceFilesWithUnusedImports)
     }
 }
 
