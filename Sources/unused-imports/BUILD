@@ -4,6 +4,11 @@ swift_binary(
     name = "unused-imports",
     srcs = [
         "main.swift",
+        "SourceFileWithUnusedImports.swift",
+        "UnusedImportStatement.swift",
+        "Reporters/JSONReporter.swift",
+        "Reporters/SedCommandReporter.swift",
+        "Reporters/UnusedImportReporter.swift",
     ],
     tags = [
         "manual",
