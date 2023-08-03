@@ -6,6 +6,7 @@ private typealias References = (usrs: Set<String>, typealiases: Set<String>)
 private let identifierRegex = try Regex("([a-zA-Z_][a-zA-Z0-9_]*)")
 private let ignoreRegex = try Regex(#"// *@ignore-import$"#)
 private var cachedLines = [String: [String.SubSequence]]()
+private let defaultReporter = SedCommandReporter()
 
 private struct Configuration: Decodable {
     static func attemptingPath(_ path: String?) -> Configuration? {
@@ -23,7 +24,7 @@ private struct Configuration: Decodable {
     let ignoredFileRegex: Regex<AnyRegexOutput>?
     let ignoredModuleRegex: Regex<AnyRegexOutput>?
     let alwaysKeepImports: Set<String>
-    let reporter: UnusedImportReporter?
+    let reporter: UnusedImportReporter
 
     private enum CodingKeys: String, CodingKey {
         case ignoredFileRegex = "ignored-file-regex"
@@ -36,7 +37,7 @@ private struct Configuration: Decodable {
         self.alwaysKeepImports = []
         self.ignoredFileRegex = nil
         self.ignoredModuleRegex = nil
-        self.reporter = nil
+        self.reporter = defaultReporter
     }
 
     init(from decoder: Decoder) throws {
@@ -59,10 +60,17 @@ private struct Configuration: Decodable {
             if string == "json" {
                 self.reporter = JSONReporter()
             } else {
-                self.reporter = nil
+                let invalidReporterTypeErrorMessage = """
+error: requested a type of reporter that doesn't exist: `\(string)`."
+In your unused-imports configuration try either:
+
+    1. Removing the `reporter` key to get the default `sed` command reporter or
+    2. Setting the `reporter` key to `json` to get the JSON reporter
+"""
+                fatalError(invalidReporterTypeErrorMessage)
             }
         } else {
-            self.reporter = nil
+            self.reporter = defaultReporter
         }
     }
 
@@ -83,8 +91,7 @@ private struct Configuration: Decodable {
     }
 
     func didFind(sourceFilesWithUnusedImports: [SourceFileWithUnusedImports]) {
-        let selectedReporter = self.reporter ?? SedCommandReporter()
-        selectedReporter.didFind(sourceFilesWithUnusedImports: sourceFilesWithUnusedImports)
+        self.reporter.didFind(sourceFilesWithUnusedImports: sourceFilesWithUnusedImports)
     }
 }
 
