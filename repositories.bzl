@@ -14,24 +14,20 @@ def _maybe(repo_rule, name, **kwargs):
     if not native.existing_rule(name):
         repo_rule(name = name, **kwargs)
 
-def swift_index_store_dependencies():
-    build_bazel_rules_swift_sha = "40c36c936c9c80b4aefa3f008ecf99dbe002be2c"
-    _maybe(
-        http_archive,
-        name = "build_bazel_rules_swift",
-        sha256 = "dd08813524deb0b449b0bcbde193caa284f45dd8fd624f9ed4ef1fcbfa78b8a8",
-        url = "https://github.com/bazelbuild/rules_swift/archive/%s.zip" % build_bazel_rules_swift_sha,
-        strip_prefix = "rules_swift-%s" % build_bazel_rules_swift_sha,
-    )
-
-    build_bazel_rules_apple_sha = "5f036277bd2e1e357fd8502bf0ade9d293cf91b3"
-    _maybe(
-        http_archive,
-        name = "build_bazel_rules_apple",
-        sha256 = "635de45a7c07daed728962a9be983503221da22b6c6759e2f67f283cbb6cbe37",
-        url = "https://github.com/bazelbuild/rules_apple/archive/%s.zip" % build_bazel_rules_apple_sha,
-        strip_prefix = "rules_apple-%s" % build_bazel_rules_apple_sha,
-    )
+def swift_index_store_dependencies(bzlmod = False):
+    if not bzlmod:
+        _maybe(
+            http_archive,
+            name = "build_bazel_rules_swift",
+            sha256 = "28a66ff5d97500f0304f4e8945d936fe0584e0d5b7a6f83258298007a93190ba",
+            url = "https://github.com/bazelbuild/rules_swift/releases/download/1.13.0/rules_swift.1.13.0.tar.gz",
+        )
+        _maybe(
+            http_archive,
+            name = "build_bazel_rules_apple",
+            sha256 = "34c41bfb59cdaea29ac2df5a2fa79e5add609c71bb303b2ebb10985f93fa20e7",
+            url = "https://github.com/bazelbuild/rules_apple/releases/download/3.1.1/rules_apple.3.1.1.tar.gz",
+        )
 
     _maybe(
         http_archive,
@@ -39,17 +35,17 @@ def swift_index_store_dependencies():
         url = "https://github.com/keith/StaticIndexStore/releases/download/5.7/libIndexStore.xcframework.zip",
         sha256 = "da69bab932357a817aa0756e400be86d7156040bfbea8eded7a3acc529320731",
         build_file_content = """
-load(
-    "@build_bazel_rules_apple//apple:apple.bzl",
-    "apple_static_xcframework_import",
-)
+load("@build_bazel_rules_apple//apple:apple.bzl", "apple_static_xcframework_import")
 
 apple_static_xcframework_import(
     name = "libIndexStore",
-    visibility = [
-        "//visibility:public",
-    ],
+    visibility = ["//visibility:public"],
     xcframework_imports = glob(["libIndexStore.xcframework/**"]),
 )
         """,
     )
+
+def _bzlmod_deps(_):
+    swift_index_store_dependencies(bzlmod = True)
+
+bzlmod_deps = module_extension(implementation = _bzlmod_deps)
