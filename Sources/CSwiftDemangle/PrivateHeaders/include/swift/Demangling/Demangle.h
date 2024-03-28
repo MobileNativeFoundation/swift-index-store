@@ -23,6 +23,7 @@
 #include <string>
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #define LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING 1
 #include "llvm/ADT/StringRef.h"
 // #include "swift/Runtime/Config.h"
