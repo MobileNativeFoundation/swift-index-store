@@ -4,3 +4,4 @@
 /DerivedData/
 /.swiftpm/
 bazel-*
+MODULE.bazel.lock

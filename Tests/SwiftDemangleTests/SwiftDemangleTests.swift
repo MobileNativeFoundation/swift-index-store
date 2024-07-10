@@ -24,8 +24,18 @@ final class SwiftDemangleTests: XCTestCase {
     func testSwiftExtensionUSR() throws {
         let demangler = Demangler()
         let root = try XCTUnwrap(demangler.demangle(symbol: kExtensionUSR))
-        let modules = Set(root.breadthFirstSequence().filter { $0.kind == .module }.compactMap { $0.text })
-        XCTAssertEqual(modules, ["Unidirectional", "Onboarding", "LyftKit"])
+        let textNodes = Set(root.breadthFirstSequence().compactMap { $0.text })
+        XCTAssertEqual(textNodes, [
+            "EffectProducer",
+            "GuestUser",
+            "LyftKit",
+            "NonemptyStack",
+            "Onboarding",
+            "OnboardingActionMask",
+            "OnboardingState",
+            "submitNameEffect",
+            "Unidirectional",
+        ])
     }
 
     func testBreathFirstSequence() throws {

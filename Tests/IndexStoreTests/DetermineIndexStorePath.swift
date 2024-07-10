@@ -10,7 +10,7 @@ import Foundation
 /// - Returns: Index store path for the current test environment
 func determineIndexStorePath() -> String {
     if let testSrcDir: String = ProcessInfo.processInfo.environment["TEST_SRCDIR"] {
-        return testSrcDir + "/__main__/Tests/IndexStoreTests/Data/main.indexstore"
+        return testSrcDir + "/_main/Tests/IndexStoreTests/Data/main.indexstore"
     }
     guard let service = ProcessInfo.processInfo.environment["XPC_SERVICE_NAME"] else {
         preconditionFailure("Expected XPC_SERVICE_NAME environment variable")

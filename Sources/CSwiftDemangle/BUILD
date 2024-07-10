@@ -8,6 +8,7 @@ cc_library(
     hdrs = glob([
         "include/**/*.h",
     ]),
+    aspect_hints = ["@build_bazel_rules_swift//swift:auto_module"],
     copts = ["-std=c++17"],
     includes = [
         "PrivateHeaders/include",
@@ -16,7 +17,6 @@ cc_library(
     linkopts = [
         "-lswiftDemangle",
     ],
-    tags = ["swift_module=CSwiftDemangle"],
     textual_hdrs = glob([
         "**/*.def",
     ]),
