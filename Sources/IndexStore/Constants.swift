@@ -1,6 +1,6 @@
 import CIndexStore
 
-public struct SymbolRoles: OptionSet {
+public struct SymbolRoles: OptionSet, Sendable {
     public let rawValue: UInt64
 
     public init(rawValue: UInt64) {
@@ -194,7 +194,7 @@ public extension SymbolKind {
     static let commentTag = INDEXSTORE_SYMBOL_KIND_COMMENTTAG
 }
 
-extension SymbolKind: CustomStringConvertible {
+extension SymbolKind: @retroactive CustomStringConvertible {
     public var description: String {
         switch self {
         case INDEXSTORE_SYMBOL_KIND_UNKNOWN: return "unknown"
@@ -260,7 +260,7 @@ public extension SymbolSubkind {
     static let swiftAccessorModify = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMODIFY
 }
 
-extension SymbolSubkind: CustomStringConvertible {
+extension SymbolSubkind: @retroactive CustomStringConvertible {
     public var description: String {
         switch self {
         case INDEXSTORE_SYMBOL_SUBKIND_NONE: return "none"
