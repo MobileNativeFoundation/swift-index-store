@@ -54,7 +54,7 @@ public struct DemangledNode {
     }
 }
 
-extension DemangledNodeKind: CustomDebugStringConvertible {
+extension DemangledNodeKind: @retroactive CustomDebugStringConvertible {
     public var debugDescription: String {
         String(cString: node_getKindName(self))
     }
