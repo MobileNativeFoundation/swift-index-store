@@ -15,6 +15,12 @@ final class IndexStoreTests: XCTestCase {
             hasUnits = true
 
             for recordName in unitReader.recordNames {
+                // Just find one record we know has some reasonable content
+                guard recordName.hasPrefix("IndexStoreTests.swift") ||
+                    recordName.hasPrefix("main.swift") else {
+                    continue
+                }
+
                 guard let recordReader = try? RecordReader(indexStore: store, recordName: recordName) else {
                     continue
                 }
