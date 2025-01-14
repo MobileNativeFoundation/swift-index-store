@@ -49,7 +49,7 @@ let package = Package(
     targets: [
         .target(name: "CIndexStore"),
         .target(name: "IndexStore", dependencies: ["CIndexStore"], linkerSettings: indexLinkerSettings),
-        .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"], exclude: ["BUILD", "Data"]),
+        .testTarget(name: "IndexStoreTests", dependencies: ["IndexStore"], exclude: ["BUILD"]),
         .target(
             name: "CSwiftDemangle",
             cxxSettings: [.headerSearchPath("PrivateHeaders/include")],

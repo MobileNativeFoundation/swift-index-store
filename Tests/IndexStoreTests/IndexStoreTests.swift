@@ -17,7 +17,7 @@ final class IndexStoreTests: XCTestCase {
             for recordName in unitReader.recordNames {
                 // Just find one record we know has some reasonable content
                 guard recordName.hasPrefix("IndexStoreTests.swift") ||
-                    recordName.hasPrefix("main.swift") else {
+                    recordName.hasPrefix("dummy.swift") else {
                     continue
                 }
 
