@@ -190,6 +190,7 @@ public extension SymbolKind {
     static let conversionFunction = INDEXSTORE_SYMBOL_KIND_CONVERSIONFUNCTION
     static let parameter = INDEXSTORE_SYMBOL_KIND_PARAMETER
     static let using = INDEXSTORE_SYMBOL_KIND_USING
+    static let concept = INDEXSTORE_SYMBOL_KIND_CONCEPT
 
     static let commentTag = INDEXSTORE_SYMBOL_KIND_COMMENTTAG
 }
@@ -224,6 +225,7 @@ extension SymbolKind: @retroactive CustomStringConvertible {
         case INDEXSTORE_SYMBOL_KIND_CONVERSIONFUNCTION: return "conversionFunction"
         case INDEXSTORE_SYMBOL_KIND_PARAMETER: return "parameter"
         case INDEXSTORE_SYMBOL_KIND_USING: return "using"
+        case INDEXSTORE_SYMBOL_KIND_CONCEPT: return "concept"
         case INDEXSTORE_SYMBOL_KIND_COMMENTTAG: return "commentTag"
         default: return "UNIDENTIFIED"
         }
@@ -258,6 +260,7 @@ public extension SymbolSubkind {
     static let swiftGenericParameter = INDEXSTORE_SYMBOL_SUBKIND_SWIFTGENERICTYPEPARAM
     static let swiftAccessorRead = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORREAD
     static let swiftAccessorModify = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMODIFY
+    static let swiftAccessorInit = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORINIT
 }
 
 extension SymbolSubkind: @retroactive CustomStringConvertible {
@@ -287,6 +290,7 @@ extension SymbolSubkind: @retroactive CustomStringConvertible {
         case INDEXSTORE_SYMBOL_SUBKIND_SWIFTGENERICTYPEPARAM: return "swiftGenericParameter"
         case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORREAD: return "swiftAccessorRead"
         case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMODIFY: return "swiftAccessorModify"
+        case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORINIT: return "swiftAccessorInit"
         default: return "UNIDENTIFIED"
         }
     }
