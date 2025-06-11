@@ -1,6 +1,5 @@
 import Foundation
 import CIndexStore
-import IndexStoreDB
 
 // About the use of `*_apply_f` functions.
 //
