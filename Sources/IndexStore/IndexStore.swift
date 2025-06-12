@@ -20,6 +20,19 @@ import CIndexStore
 //   2. The context is passed by pointer to the `apply_f` function
 //   3. The context is unpacked using `assumingMemoryBound(to: Context.self).pointee`
 
+public struct PathMapping {
+  /// Path prefix to be replaced, typically the canonical or hermetic path.
+  let original: String
+
+  /// Replacement path prefix, typically the path on the local machine.
+  let replacement: String
+
+  public init(original: String, replacement: String) {
+    self.original = original
+    self.replacement = replacement
+  }
+}
+
 public final class IndexStore {
     fileprivate let store: indexstore_t
 
@@ -31,6 +44,32 @@ public final class IndexStore {
         } else {
             throw IndexStoreError(error!)
         }
+    }
+    
+    public init(
+        path: String,
+        prefixMappings: [PathMapping] = []
+    ) throws {
+        let fullPath = (path as NSString).expandingTildeInPath
+
+        let cOptions = indexstore_creation_options_create()
+        defer { indexstore_creation_options_dispose(cOptions) }
+
+        for mapping in prefixMappings {
+            mapping.original.withCString { origCStr in
+                mapping.replacement.withCString { remappedCStr in
+                    indexstore_creation_options_add_prefix_mapping(cOptions, origCStr, remappedCStr)
+                }
+            }
+        }
+
+        var error: indexstore_error_t? = nil
+        guard let store = indexstore_store_create_with_options(fullPath, cOptions, &error) else {
+            defer { if error != nil { indexstore_error_dispose(error!) } }
+            throw IndexStoreError(error!)
+        }
+
+        self.store = store
     }
 
     deinit {
