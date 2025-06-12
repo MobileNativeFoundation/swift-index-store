@@ -52,9 +52,7 @@ public final class IndexStore {
     ) throws {
         let fullPath = (path as NSString).expandingTildeInPath
 
-        guard let cOptions = indexstore_creation_options_create() else {
-            throw fatalError("failed to create indexstore_creation_options_t")
-        }
+        let cOptions = indexstore_creation_options_create()
         defer { indexstore_creation_options_dispose(cOptions) }
 
         for mapping in prefixMappings {
