@@ -16,4 +16,5 @@ swift_binary(
     deps = [
         "//:IndexStore",
     ],
+    visibility = ["//visibility:public"],
 )
