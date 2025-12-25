@@ -95,12 +95,30 @@ In your unused-imports configuration try either:
     }
 }
 
-private func getImports(path: String, recordReader: RecordReader) -> (Set<String>, [String: Int]) {
+/// Computes the transitive closure of all modules exported by the given module.
+/// For example, if B exports C and C exports D, then transitiveExports(for: "B") returns {"C", "D"}.
+/// Handles cycles by tracking visited modules.
+func transitiveExports(for module: String, graph: [String: Set<String>]) -> Set<String> {
+    var visited = Set<String>()
+    var queue = Array(graph[module, default: []])
+    
+    while !queue.isEmpty {
+        let current = queue.removeFirst()
+        if visited.insert(current).inserted {
+            queue.append(contentsOf: graph[current, default: []])
+        }
+    }
+    
+    return visited
+}
+
+private func getImports(path: String, recordReader: RecordReader) -> (imports: Set<String>, exportedImports: Set<String>, lineNumbers: [String: Int]) {
     var importsToLineNumbers = [String: Int]()
     let lines = try! String(contentsOfFile: path).split(separator: "\n", omittingEmptySubsequences: false)
     cachedLines[path] = lines
 
     var imports = Set<String>()
+    var exportedImports = Set<String>()
     recordReader.forEach { (occurrence: SymbolOccurrence) in
         if occurrence.symbol.kind == .module && occurrence.roles.contains(.reference) {
             let line = lines[occurrence.location.line - 1]
@@ -110,11 +128,16 @@ private func getImports(path: String, recordReader: RecordReader) -> (Set<String
             {
                 imports.insert(occurrence.symbol.name)
                 importsToLineNumbers[occurrence.symbol.name] = occurrence.location.line
+                
+                // Track @_exported imports
+                if line.contains("@_exported") {
+                    exportedImports.insert(occurrence.symbol.name)
+                }
             }
         }
     }
 
-    return (imports, importsToLineNumbers)
+    return (imports: imports, exportedImports: exportedImports, lineNumbers: importsToLineNumbers)
 }
 
 private func getReferences(unitReader: UnitReader, recordReader: RecordReader) -> References {
@@ -193,6 +216,9 @@ private func main(
     let unitsAndRecords = indexStorePaths.flatMap(collectUnitsAndRecords(indexStorePath:))
     var modulesToUnits: [String: [UnitReader]] = [:]
     var allModuleNames = Set<String>()
+    
+    // Track which modules @_exported import other modules
+    var moduleExports: [String: Set<String>] = [:]
 
     for (unitReader, recordReader) in unitsAndRecords {
         allModuleNames.insert(unitReader.moduleName)
@@ -214,6 +240,12 @@ private func main(
 
         filesToDefinitions[unitReader.mainFile] = References(
             usrs: definedUsrs, typealiases: definedTypealiases)
+        
+        // Collect @_exported imports for this module
+        let importInfo = getImports(path: unitReader.mainFile, recordReader: recordReader)
+        if !importInfo.exportedImports.isEmpty {
+            moduleExports[unitReader.moduleName, default: []].formUnion(importInfo.exportedImports)
+        }
     }
 
     var sourceFilesWithUnusedImports: [SourceFileWithUnusedImports] = []
@@ -225,9 +257,8 @@ private func main(
             continue
         }
 
-        let (rawImports, importsToLineNumbers) = getImports(
-            path: unitReader.mainFile, recordReader: recordReader)
-        let allImports = rawImports.intersection(allModuleNames)
+        let importInfo = getImports(path: unitReader.mainFile, recordReader: recordReader)
+        let allImports = importInfo.imports.intersection(allModuleNames)
         if allImports.isEmpty {
             continue
         }
@@ -235,22 +266,36 @@ private func main(
         let references = getReferences(unitReader: unitReader, recordReader: recordReader)
         var usedImports = Set<String>()
         for anImport in allImports {
-            for dependentUnit in modulesToUnits[anImport] ?? [] {
+            if usedImports.contains(anImport) {
+                continue
+            }
+            
+            // Get all modules to check: the imported module + any modules it transitively @_exported
+            let exportedModules = transitiveExports(for: anImport, graph: moduleExports)
+            let modulesToCheck = [anImport] + Array(exportedModules)
+            
+            for moduleToCheck in modulesToCheck {
                 if usedImports.contains(anImport) {
                     break
                 }
+                
+                for dependentUnit in modulesToUnits[moduleToCheck] ?? [] {
+                    if usedImports.contains(anImport) {
+                        break
+                    }
 
-                // Empty files have units but no records and therefore no usrs
-                guard let definitions = filesToDefinitions[dependentUnit.mainFile] else {
-                    continue
-                }
+                    // Empty files have units but no records and therefore no usrs
+                    guard let definitions = filesToDefinitions[dependentUnit.mainFile] else {
+                        continue
+                    }
 
-                if !definitions.usrs.intersection(references.usrs).isEmpty {
-                    usedImports.insert(dependentUnit.moduleName)
-                } else if !definitions.typealiases.intersection(references.typealiases).isEmpty {
-                    // If the typealias isn't already imported then it's probably not the one we're looking for
-                    if allImports.contains(dependentUnit.moduleName) {
-                        usedImports.insert(dependentUnit.moduleName)
+                    if !definitions.usrs.intersection(references.usrs).isEmpty {
+                        usedImports.insert(anImport)
+                    } else if !definitions.typealiases.intersection(references.typealiases).isEmpty {
+                        // If the typealias isn't already imported then it's probably not the one we're looking for
+                        if allImports.contains(dependentUnit.moduleName) {
+                            usedImports.insert(anImport)
+                        }
                     }
                 }
             }
@@ -260,11 +305,12 @@ private func main(
             }
         }
 
-        let unusedImports = allImports.subtracting(usedImports).subtracting(configuration.alwaysKeepImports)
+        // @_exported imports should never be flagged as unused - their purpose is re-exporting
+        let unusedImports = allImports.subtracting(usedImports).subtracting(configuration.alwaysKeepImports).subtracting(importInfo.exportedImports)
         if !unusedImports.isEmpty {
             let sourceFileWithUnusedImports = SourceFileWithUnusedImports(
                 path: unitReader.mainFile.replacingOccurrences(of: pwd + "/", with: ""),
-                unusedImportStatements: unusedImports.map { UnusedImportStatement(moduleName: $0, lineNumber: importsToLineNumbers[$0]!) }.sorted()
+                unusedImportStatements: unusedImports.map { UnusedImportStatement(moduleName: $0, lineNumber: importInfo.lineNumbers[$0]!) }.sorted()
             )
             sourceFilesWithUnusedImports.append(sourceFileWithUnusedImports)
          }
