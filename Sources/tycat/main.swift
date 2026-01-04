@@ -1,5 +1,9 @@
 import IndexStore
+#if canImport(Darwin)
 import Darwin.C
+#else
+import Glibc
+#endif
 
 func main(_ storePath: String, _ subcommand: String, _ requestedType: String) throws {
     var typeGraph = TypeGraph()

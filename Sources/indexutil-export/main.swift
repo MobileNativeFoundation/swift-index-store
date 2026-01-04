@@ -1,6 +1,5 @@
 import IndexStore
 import Foundation
-import struct ObjectiveC.ObjCBool
 
 struct StandardErrorStream: TextOutputStream {
     mutating func write(_ string: String) {

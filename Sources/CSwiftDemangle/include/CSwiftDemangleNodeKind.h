@@ -1,5 +1,16 @@
+#ifndef CSWIFT_DEMANGLE_NODE_KIND_H
+#define CSWIFT_DEMANGLE_NODE_KIND_H
+
 #include <stdint.h>
+#ifdef __APPLE__
 #include <CoreFoundation/CFAvailability.h>
+#else
+// CF_ENUM is macOS-specific, define for other platforms
+// Use a simpler definition that creates a typedef alias
+#ifndef CF_ENUM
+#define CF_ENUM(_type, _name) _type _name; enum
+#endif
+#endif
 # 1 "<stdin>"
 # 1 "<built-in>" 1
 # 1 "<built-in>" 3
@@ -391,3 +402,5 @@ demangle_node_kind_OutlinedDestroyNoValueWitness,
 demangle_node_kind_DependentGenericInverseConformanceRequirement,
 # 4 "<stdin>" 2
 };
+
+#endif // CSWIFT_DEMANGLE_NODE_KIND_H

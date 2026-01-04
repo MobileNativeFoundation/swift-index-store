@@ -1,5 +1,9 @@
 import IndexStore
+#if canImport(Darwin)
 import Darwin
+#else
+import Glibc
+#endif
 import Foundation
 
 private typealias References = (usrs: Set<String>, typealiases: Set<String>)

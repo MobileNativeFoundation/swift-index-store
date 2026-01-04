@@ -3,7 +3,17 @@
 #include <stdbool.h>
 
 #include <sys/cdefs.h>
+#ifdef __APPLE__
 #include <os/base.h>
+#else
+// os/base.h is macOS-specific, define the nullability macros for other platforms
+#ifndef OS_ASSUME_NONNULL_BEGIN
+#define OS_ASSUME_NONNULL_BEGIN _Pragma("clang assume_nonnull begin")
+#endif
+#ifndef OS_ASSUME_NONNULL_END
+#define OS_ASSUME_NONNULL_END _Pragma("clang assume_nonnull end")
+#endif
+#endif
 
 #include "CSwiftDemangleNodeKind.h"
 
