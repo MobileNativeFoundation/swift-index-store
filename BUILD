@@ -33,7 +33,7 @@ swift_library(
     name = "SwiftDemangle",
     srcs = glob(["Sources/SwiftDemangle/*.swift"]),
     linkopts = select({
-        "@platforms//os:linux": [],
+        "@platforms//os:linux": ["-lswiftDemangle"],
         "//conditions:default": [
             "-Wl,-force_load,__BAZEL_XCODE_DEVELOPER_DIR__/Toolchains/XcodeDefault.xctoolchain/usr/lib/libswiftDemangle.dylib",
             "-Wl,-rpath,__BAZEL_XCODE_DEVELOPER_DIR__/Toolchains/XcodeDefault.xctoolchain/usr/lib",
