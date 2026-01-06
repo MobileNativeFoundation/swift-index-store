@@ -108,6 +108,8 @@ enum class FunctionSigSpecializationParamKind : unsigned {
   BoxToStack = 7,
   InOutToOut = 8,
   ConstantPropKeyPath = 9,
+  ConstantPropStruct = 10,
+  ClosurePropPreviousArg = 11,
 
   // Option Set Flags use bits 6-31. This gives us 26 bits to use for option
   // flags.
@@ -133,7 +135,10 @@ enum class MangledDifferentiabilityKind : char {
   Linear = 'l',
 };
 
-enum class MangledLifetimeDependenceKind : char { Inherit = 'i', Scope = 's' };
+enum class MangledSILThunkKind : char {
+  Invalid = 0,
+  Identity = 'I',
+};
 
 /// The pass that caused the specialization to occur. We use this to make sure
 /// that two passes that generate similar changes do not yield the same
@@ -151,7 +156,9 @@ enum class SpecializationPass : uint8_t {
   GenericSpecializer,
   MoveDiagnosticInOutToOut,
   AsyncDemotion,
-  LAST = AsyncDemotion
+  PackSpecialization,
+  EmbeddedWitnessCallSpecialization,
+  LAST = EmbeddedWitnessCallSpecialization
 };
 
 constexpr uint8_t MAX_SPECIALIZATION_PASS = 10;
@@ -599,7 +606,7 @@ struct [[nodiscard]] ManglingError {
     InvalidImplCoroutineKind,
     InvalidImplFunctionAttribute,
     InvalidImplParameterConvention,
-    InvalidImplParameterSending,
+    InvalidImplParameterAttr,
     InvalidMetatypeRepresentation,
     MultiByteRelatedEntity,
     BadValueWitnessKind,

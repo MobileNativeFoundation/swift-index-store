@@ -158,6 +158,12 @@ public extension SymbolProperty {
     static let local = INDEXSTORE_SYMBOL_PROPERTY_LOCAL
     static let protocolInterface = INDEXSTORE_SYMBOL_PROPERTY_PROTOCOL_INTERFACE
     static let swiftAsync = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ASYNC
+    static let swiftAccessControlLessThanFileprivate = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_LESSTHANFILEPRIVATE
+    static let swiftAccessControlFileprivate = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_FILEPRIVATE
+    static let swiftAccessControlInternal = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_INTERNAL
+    static let swiftAccessControlPackage = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_PACKAGE
+    static let swiftAccessControlSPI = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_SPI
+    static let swiftAccessControlPublic = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_PUBLIC
 }
 
 public typealias SymbolKind = indexstore_symbol_kind_t
@@ -261,6 +267,8 @@ public extension SymbolSubkind {
     static let swiftAccessorRead = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORREAD
     static let swiftAccessorModify = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMODIFY
     static let swiftAccessorInit = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORINIT
+    static let swiftAccessorBorrow = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORBORROW
+    static let swiftAccessorMutate = INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMUTATE
 }
 
 extension SymbolSubkind: @retroactive CustomStringConvertible {
@@ -291,6 +299,8 @@ extension SymbolSubkind: @retroactive CustomStringConvertible {
         case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORREAD: return "swiftAccessorRead"
         case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMODIFY: return "swiftAccessorModify"
         case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORINIT: return "swiftAccessorInit"
+        case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORBORROW: return "swiftAccessorBorrow"
+        case INDEXSTORE_SYMBOL_SUBKIND_SWIFTACCESSORMUTATE: return "swiftAccessorMutate"
         default: return "UNIDENTIFIED"
         }
     }
