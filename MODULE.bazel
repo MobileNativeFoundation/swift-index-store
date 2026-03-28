@@ -5,9 +5,10 @@ module(
 )
 
 bazel_dep(name = "apple_support", version = "1.16.0")
-bazel_dep(name = "platforms", version = "0.0.9")
-bazel_dep(name = "rules_apple", version = "3.6.0", repo_name = "build_bazel_rules_apple", max_compatibility_level = 4)
-bazel_dep(name = "rules_swift", version = "2.1.1", repo_name = "build_bazel_rules_swift", max_compatibility_level = 3)
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_apple", version = "3.6.0", max_compatibility_level = 4, repo_name = "build_bazel_rules_apple")
+bazel_dep(name = "rules_swift", version = "2.1.1", max_compatibility_level = 3, repo_name = "build_bazel_rules_swift")
+bazel_dep(name = "rules_cc", version = "0.2.17")
 
 non_module_deps = use_extension("//:repositories.bzl", "bzlmod_deps")
 use_repo(non_module_deps, "StaticIndexStore")
