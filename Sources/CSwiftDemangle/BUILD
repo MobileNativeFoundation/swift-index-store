@@ -17,7 +17,6 @@ cc_library(
     hdrs = glob([
         "include/**/*.h",
     ]),
-    alwayslink = True,
     aspect_hints = [":CSwiftDemangle_swift_hint"],
     copts = ["-std=c++17"],
     includes = [
@@ -35,4 +34,5 @@ cc_library(
     visibility = [
         "//:__pkg__",
     ],
+    alwayslink = True,
 )
