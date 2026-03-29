@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "0 5 * * *"
 jobs:
   buildifier:
     runs-on: ubuntu-latest
@@ -12,27 +14,53 @@ jobs:
       - uses: pre-commit/action@v3.0.1
   test-bazel:
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        bazel_version:
+          - "7.x"
+          - "8.x"
+          - "9.x"
+          - "latest"
+          - "last_green"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: sudo xcode-select -s /Applications/Xcode_16.2.app
-      - run: bazelisk build //...
-      - run: bazelisk test //...
+      - env:
+          USE_BAZEL_VERSION: ${{ matrix.bazel_version }}
+        run: |
+          bazelisk build //...
+          bazelisk test //...
+
   test-swiftpm:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: sudo xcode-select -s /Applications/Xcode_16.2.app
       - run: swift build
       - run: swift test
+
   test-linux:
     runs-on: ubuntu-latest
     container: swift:6.2.3
+    strategy:
+      fail-fast: false
+      matrix:
+        bazel_version:
+          - "7.x"
+          - "8.x"
+          - "9.x"
+          - "latest"
+          - "last_green"
     env:
       CC: clang
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: bazel-contrib/setup-bazel@0.16.0
         with:
           bazelisk-version: 1.x
-      - run: bazel build //...
-      - run: bazel test //...
+      - env:
+          USE_BAZEL_VERSION: ${{ matrix.bazel_version }}
+        run: |
+          bazel build //...
+          bazel test //...
