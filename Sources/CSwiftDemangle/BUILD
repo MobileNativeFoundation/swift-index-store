@@ -1,4 +1,5 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_interop_hint")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 # Interop hint for Swift access to C headers
 swift_interop_hint(
