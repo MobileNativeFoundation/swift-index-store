@@ -1,10 +1,9 @@
 // swift-tools-version:5.7
 
 import PackageDescription
-
-#if os(macOS)
 import Foundation
 
+#if os(macOS)
 let process = Process()
 process.launchPath = "/usr/bin/xcode-select"
 process.arguments = ["-p"]
@@ -27,8 +26,28 @@ let swiftDemangleLinkerSettings: [LinkerSetting] = [
 ]
 
 #else
-let indexLinkerSettings: [LinkerSetting] = []
-let swiftDemangleLinkerSettings: [LinkerSetting] = [.linkedLibrary("swiftDemangle")]
+let process = Process()
+process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+process.arguments = ["swiftc"]
+let swiftcPipe = Pipe()
+process.standardOutput = swiftcPipe
+try process.run()
+process.waitUntilExit()
+let swiftcData = swiftcPipe.fileHandleForReading.readDataToEndOfFile()
+let swiftcBin = String(decoding: swiftcData, as: UTF8.self).trimmingCharacters(in: .newlines)
+let toolchainLibDir = URL(fileURLWithPath: swiftcBin).resolvingSymlinksInPath()
+    .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("lib").path
+
+let indexLinkerSettings: [LinkerSetting] = [
+    .unsafeFlags(["-L\(toolchainLibDir)"]),
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(toolchainLibDir)"]),
+]
+
+let swiftDemangleLinkerSettings: [LinkerSetting] = [
+    .unsafeFlags(["-L\(toolchainLibDir)"]),
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(toolchainLibDir)"]),
+    .linkedLibrary("swiftDemangle"),
+]
 #endif
 
 let package = Package(

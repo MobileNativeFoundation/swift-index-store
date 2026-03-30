@@ -1,5 +1,4 @@
 module CSwiftDemangle {
     header "CSwiftDemangle.h"
-    link "CSwiftDemangle"
     export *
 }
