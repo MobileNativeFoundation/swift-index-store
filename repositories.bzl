@@ -45,7 +45,42 @@ apple_static_xcframework_import(
         """,
     )
 
+def _linux_indexstore_impl(repository_ctx):
+    os_name = repository_ctx.os.name
+    if "linux" not in os_name.lower():
+        repository_ctx.file("BUILD.bazel", """\
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "libIndexStore",
+    visibility = ["//visibility:public"],
+)
+""")
+        return
+    swiftc = repository_ctx.which("swiftc")
+    if swiftc == None:
+        fail("swiftc not found on PATH, unable to locate libIndexStore.so")
+    lib_dir = repository_ctx.path(str(swiftc.realpath.dirname.dirname) + "/lib")
+    indexstore = lib_dir.get_child("libIndexStore.so")
+    if not indexstore.exists:
+        fail("libIndexStore.so not found at %s" % indexstore)
+    repository_ctx.symlink(indexstore, "libIndexStore.so")
+    repository_ctx.file("BUILD.bazel", """\
+load("@rules_cc//cc:defs.bzl", "cc_import")
+
+cc_import(
+    name = "libIndexStore",
+    shared_library = "libIndexStore.so",
+    visibility = ["//visibility:public"],
+)
+""")
+
+_linux_indexstore = repository_rule(
+    implementation = _linux_indexstore_impl,
+)
+
 def _bzlmod_deps(_):
     swift_index_store_dependencies(bzlmod = True)
+    _linux_indexstore(name = "LinuxIndexStore")
 
 bzlmod_deps = module_extension(implementation = _bzlmod_deps)

@@ -13,17 +13,15 @@ cc_library(
 swift_library(
     name = "IndexStore",
     srcs = glob(["Sources/IndexStore/*.swift"]),
-    linkopts = select({
-        "@platforms//os:linux": ["-lIndexStore"],
-        "//conditions:default": [],
-    }),
     visibility = [
         "//visibility:public",
     ],
     deps = [
         ":CIndexStore",
     ] + select({
-        "@platforms//os:linux": [],
+        "@platforms//os:linux": [
+            "@LinuxIndexStore//:libIndexStore",
+        ],
         "//conditions:default": [
             "@StaticIndexStore//:libIndexStore",
         ],
