@@ -45,21 +45,24 @@ apple_static_xcframework_import(
         """,
     )
 
-def _linux_indexstore_impl(repository_ctx):
-    os_name = repository_ctx.os.name
-    if "linux" not in os_name.lower():
-        repository_ctx.file("BUILD.bazel", """\
+_EMPTY_LIBRARY = """\
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 cc_library(
     name = "libIndexStore",
     visibility = ["//visibility:public"],
 )
-""")
+"""
+
+def _linux_indexstore_impl(repository_ctx):
+    os_name = repository_ctx.os.name
+    if "linux" not in os_name.lower():
+        repository_ctx.file("BUILD.bazel", _EMPTY_LIBRARY)
         return
     swiftc = repository_ctx.which("swiftc")
     if swiftc == None:
-        fail("swiftc not found on PATH, unable to locate libIndexStore.so")
+        repository_ctx.file("BUILD.bazel", _EMPTY_LIBRARY)
+        return
     lib_dir = repository_ctx.path(str(swiftc.realpath.dirname.dirname) + "/lib")
     indexstore = lib_dir.get_child("libIndexStore.so")
     if not indexstore.exists:
