@@ -50,6 +50,22 @@ jobs:
       - run: swift build
       - run: swift test
 
+  test-swiftpm-linux-shimmed-path:
+    runs-on: ubuntu-latest
+    container: swift:6.3
+    env:
+      CC: clang
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          real_swiftc="$(command -v swiftc)"
+          mkdir -p .ci-bin
+          printf '%s\n' '#!/usr/bin/env bash' "exec \"${real_swiftc}\" \"\$@\"" > .ci-bin/swiftc
+          chmod +x .ci-bin/swiftc
+          PATH="$PWD/.ci-bin:$PATH" swift build
+          PATH="$PWD/.ci-bin:$PATH" swift test
+
   test-linux:
     runs-on: ubuntu-latest
     container: swift:6.3
