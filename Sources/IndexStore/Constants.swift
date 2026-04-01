@@ -166,6 +166,27 @@ public extension SymbolProperty {
     static let swiftAccessControlPublic = INDEXSTORE_SYMBOL_PROPERTY_SWIFT_ACCESSCONTROL_PUBLIC
 }
 
+public typealias SymbolLanguage = indexstore_symbol_language_t
+
+public extension SymbolLanguage {
+    static let c = INDEXSTORE_SYMBOL_LANG_C
+    static let objc = INDEXSTORE_SYMBOL_LANG_OBJC
+    static let cxx = INDEXSTORE_SYMBOL_LANG_CXX
+    static let swift = INDEXSTORE_SYMBOL_LANG_SWIFT
+}
+
+extension SymbolLanguage: @retroactive CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case INDEXSTORE_SYMBOL_LANG_C: return "c"
+        case INDEXSTORE_SYMBOL_LANG_OBJC: return "objc"
+        case INDEXSTORE_SYMBOL_LANG_CXX: return "cxx"
+        case INDEXSTORE_SYMBOL_LANG_SWIFT: return "swift"
+        default: return "UNIDENTIFIED"
+        }
+    }
+}
+
 public typealias SymbolKind = indexstore_symbol_kind_t
 
 public extension SymbolKind {
