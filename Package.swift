@@ -26,26 +26,76 @@ let swiftDemangleLinkerSettings: [LinkerSetting] = [
 ]
 
 #else
-let process = Process()
-process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-process.arguments = ["swiftc"]
-let swiftcPipe = Pipe()
-process.standardOutput = swiftcPipe
-try process.run()
-process.waitUntilExit()
-let swiftcData = swiftcPipe.fileHandleForReading.readDataToEndOfFile()
-let swiftcBin = String(decoding: swiftcData, as: UTF8.self).trimmingCharacters(in: .newlines)
-let toolchainLibDir = URL(fileURLWithPath: swiftcBin).resolvingSymlinksInPath()
-    .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("lib").path
+func runProcess(_ executableURL: URL, arguments: [String]) throws -> Data {
+    let process = Process()
+    process.executableURL = executableURL
+    process.arguments = arguments
+
+    let stdout = Pipe()
+    process.standardOutput = stdout
+
+    try process.run()
+    process.waitUntilExit()
+
+    guard process.terminationStatus == 0 else {
+        throw NSError(
+            domain: "swift-index-store.Package",
+            code: Int(process.terminationStatus),
+            userInfo: [
+                NSLocalizedDescriptionKey: "\(arguments.joined(separator: " ")) exited with status \(process.terminationStatus)",
+            ]
+        )
+    }
+
+    return stdout.fileHandleForReading.readDataToEndOfFile()
+}
+
+func linuxToolchainLibraryDirectory(containing library: String) throws -> String {
+    let targetInfoData = try runProcess(
+        URL(fileURLWithPath: "/usr/bin/env"),
+        arguments: ["swiftc", "-print-target-info"]
+    )
+    let targetInfo = try JSONSerialization.jsonObject(with: targetInfoData) as? [String: Any]
+    let paths = targetInfo?["paths"] as? [String: Any]
+
+    var candidateDirectories: [String] = (paths?["runtimeLibraryPaths"] as? [String]) ?? []
+
+    if let runtimeResourcePath = paths?["runtimeResourcePath"] as? String {
+        let runtimeResourceURL = URL(fileURLWithPath: runtimeResourcePath).resolvingSymlinksInPath()
+        candidateDirectories.append(runtimeResourceURL.path)
+        candidateDirectories.append(runtimeResourceURL.deletingLastPathComponent().path)
+        candidateDirectories.append(runtimeResourceURL.deletingLastPathComponent().deletingLastPathComponent().path)
+    }
+
+    let fileManager = FileManager.default
+    let uniqueCandidateDirectories = Array(NSOrderedSet(array: candidateDirectories)) as? [String] ?? []
+
+    if let libraryDirectory = uniqueCandidateDirectories.first(where: { directory in
+        fileManager.fileExists(atPath: "\(directory)/\(library)")
+    }) {
+        return libraryDirectory
+    }
+
+    throw NSError(
+        domain: "swift-index-store.Package",
+        code: 1,
+        userInfo: [
+            NSLocalizedDescriptionKey: "Could not locate \(library) from swiftc -print-target-info",
+        ]
+    )
+}
+
+let indexStoreLibDir = try linuxToolchainLibraryDirectory(containing: "libIndexStore.so")
+let swiftDemangleLibDir = try linuxToolchainLibraryDirectory(containing: "libswiftDemangle.so")
 
 let indexLinkerSettings: [LinkerSetting] = [
-    .unsafeFlags(["-L\(toolchainLibDir)"]),
-    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(toolchainLibDir)"]),
+    .unsafeFlags(["-L\(indexStoreLibDir)"]),
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(indexStoreLibDir)"]),
 ]
 
 let swiftDemangleLinkerSettings: [LinkerSetting] = [
-    .unsafeFlags(["-L\(toolchainLibDir)"]),
-    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(toolchainLibDir)"]),
+    .unsafeFlags(["-L\(swiftDemangleLibDir)"]),
+    .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "\(swiftDemangleLibDir)"]),
     .linkedLibrary("swiftDemangle"),
 ]
 #endif
