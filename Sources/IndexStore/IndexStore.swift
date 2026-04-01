@@ -361,6 +361,10 @@ public final class Symbol {
 
     public private(set) lazy var name = String(indexstore_symbol_get_name(self.symbol))
 
+    public var language: SymbolLanguage {
+        indexstore_symbol_get_language(self.symbol)
+    }
+
     public var kind: SymbolKind {
         return indexstore_symbol_get_kind(self.symbol)
     }
