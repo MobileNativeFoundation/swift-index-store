@@ -46,3 +46,14 @@ swift_library(
         "//Sources/CSwiftDemangle",
     ],
 )
+
+filegroup(
+    name = "repository_test_files",
+    testonly = True,
+    srcs = [
+        ".bazelversion",
+        "MODULE.bazel",
+        "repositories.bzl",
+    ],
+    visibility = ["//Tests/Bazel:__pkg__"],
+)
